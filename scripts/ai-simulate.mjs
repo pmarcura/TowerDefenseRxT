@@ -9,6 +9,8 @@ const bot = readStringArg("--bot") ?? "random";
 const episodes = readNumberArg("--episodes", 1000);
 const seed = readNumberArg("--seed", 14729);
 const maxSteps = readNumberArg("--max-steps", 260);
+const targetWaveCount = readNumberArg("--target-waves", 20);
+const maxLearningSamples = readNumberArg("--max-learning-samples", 12000);
 const policyPath = readStringArg("--policy");
 const tmpDir = path.join(rootDir, ".tmp", "ai-sim");
 const bundledModule = path.join(tmpDir, "runAiSimulation.mjs");
@@ -31,23 +33,36 @@ const simulator = await import(`${pathToFileURL(bundledModule).href}?t=${Date.no
 const policy = policyPath
   ? JSON.parse(await readFile(path.resolve(rootDir, policyPath), "utf8"))
   : undefined;
-const report = simulator.runAiSimulation({ bot, episodes, seed, maxSteps, policy });
+const report = simulator.runAiSimulation({
+  bot,
+  episodes,
+  seed,
+  maxSteps,
+  targetWaveCount,
+  maxLearningSamples,
+  policy
+});
 const markdown = simulator.formatAiSimulationReport(report);
 const dashboard = simulator.formatAiDashboardHtml(report);
+const learningDataset = `${report.learningSamples.map((sample) => JSON.stringify(sample)).join("\n")}\n`;
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 const jsonPath = path.join(reportDir, `ai-${stamp}.json`);
 const mdPath = path.join(reportDir, `ai-${stamp}.md`);
 const htmlPath = path.join(reportDir, `dashboard-${stamp}.html`);
+const datasetPath = path.join(reportDir, `learning-dataset-${stamp}.jsonl`);
 const latestJsonPath = path.join(reportDir, "latest.json");
 const latestMdPath = path.join(reportDir, "latest.md");
 const latestHtmlPath = path.join(reportDir, "dashboard.html");
+const latestDatasetPath = path.join(reportDir, "learning-dataset.jsonl");
 
 await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 await writeFile(mdPath, markdown, "utf8");
 await writeFile(htmlPath, dashboard, "utf8");
+await writeFile(datasetPath, learningDataset, "utf8");
 await writeFile(latestJsonPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 await writeFile(latestMdPath, markdown, "utf8");
 await writeFile(latestHtmlPath, dashboard, "utf8");
+await writeFile(latestDatasetPath, learningDataset, "utf8");
 
 console.log(`AI simulated ${report.episodes} episodes with ${report.bot}.`);
 console.log(`Win rate: ${(report.winRate * 100).toFixed(1)}%.`);
@@ -55,6 +70,7 @@ console.log(`Timeout rate: ${(report.timeoutRate * 100).toFixed(1)}%.`);
 console.log(`Invalid actions: ${report.invalidActions}.`);
 console.log(`Invariant failures: ${report.invariantFailures}.`);
 console.log(`Dashboard: ${path.relative(rootDir, latestHtmlPath)}`);
+console.log(`Learning dataset: ${path.relative(rootDir, latestDatasetPath)}`);
 
 function readNumberArg(name, fallback) {
   const value = readStringArg(name);

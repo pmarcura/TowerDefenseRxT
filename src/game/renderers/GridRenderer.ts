@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { waveDefinitions } from "../data/waves";
+import { getWaveDefinition } from "../data/waves";
 import type { MapDefinition } from "../models/types";
 import type { GameState } from "../models/types";
 import { gridToWorld, isGridOnPath } from "../utils/grid";
@@ -222,11 +222,7 @@ export class GridRenderer {
   }
 
   private getActivePathIndexes(state: GameState): Set<number> {
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
-
-    if (!wave) {
-      return new Set([0]);
-    }
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
     return new Set(wave.groups.map((group) => group.pathIndex ?? 0));
   }
@@ -236,12 +232,8 @@ export class GridRenderer {
       return new Set();
     }
 
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
-    const previousWave = waveDefinitions[state.wave.currentWaveIndex - 1];
-
-    if (!wave || !previousWave) {
-      return new Set();
-    }
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
+    const previousWave = getWaveDefinition(state.wave.currentWaveIndex - 1);
 
     const previousRoutes = new Set(previousWave.groups.map((group) => group.pathIndex ?? 0));
 
@@ -259,14 +251,10 @@ export class GridRenderer {
   }
 
   private drawSpawnTelegraphs(state: GameState): void {
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
     for (const sprite of this.spawnSprites.values()) {
       sprite.setVisible(false);
-    }
-
-    if (!wave) {
-      return;
     }
 
     const pathIndexes = [...new Set(wave.groups.map((group) => group.pathIndex ?? 0))];

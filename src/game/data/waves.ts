@@ -110,3 +110,171 @@ export const waveDefinitions: readonly WaveDefinition[] = [
     ]
   }
 ];
+
+export const ENDLESS_BOSS_INTERVAL = 5;
+export const ENDLESS_TIMELINE_SIZE = 10;
+
+export const getWaveDefinition = (waveIndex: number): WaveDefinition => {
+  const safeIndex = Math.max(0, Math.floor(waveIndex));
+  const fixedWave = waveDefinitions[safeIndex];
+
+  if (fixedWave) {
+    return fixedWave;
+  }
+
+  return createProceduralWave(safeIndex);
+};
+
+export const getWaveDefinitionsForAnalysis = (count: number): readonly WaveDefinition[] =>
+  Array.from({ length: Math.max(1, Math.floor(count)) }, (_, index) => getWaveDefinition(index));
+
+export const getWaveTimelineWindow = (
+  currentWaveIndex: number,
+  size = ENDLESS_TIMELINE_SIZE
+): readonly { wave: WaveDefinition; index: number }[] => {
+  const safeSize = Math.max(3, Math.floor(size));
+  const start = Math.max(0, currentWaveIndex - Math.floor(safeSize / 2));
+
+  return Array.from({ length: safeSize }, (_, offset) => {
+    const index = start + offset;
+
+    return {
+      index,
+      wave: getWaveDefinition(index)
+    };
+  });
+};
+
+export const getWaveThreat = (wave: WaveDefinition): number => {
+  const rawThreat = wave.groups.reduce((sum, group) => {
+    const enemyWeight = getEnemyThreatWeight(group.enemyTypeId);
+    const routePressure = 1 + (group.pathIndex ?? 0) * 0.06;
+
+    return sum + group.count * enemyWeight * routePressure + (wave.isBoss ? 28 : 0);
+  }, 0);
+
+  return Math.min(99, Math.max(1, Math.round(rawThreat)));
+};
+
+const createProceduralWave = (waveIndex: number): WaveDefinition => {
+  const waveNumber = waveIndex + 1;
+  const endlessIndex = waveIndex - waveDefinitions.length + 1;
+  const isBoss = waveNumber % ENDLESS_BOSS_INTERVAL === 0;
+  const mapStageIndex = 4 + Math.floor(endlessIndex * 0.72);
+  const routeCount = Math.min(6, 3 + Math.floor((mapStageIndex - 4) / 2));
+  const pressureTier = 1 + endlessIndex * 0.16;
+  const routeIndexes = Array.from({ length: routeCount }, (_, index) => index);
+  const groups = isBoss
+    ? createProceduralBossGroups(waveNumber, pressureTier, routeIndexes)
+    : createProceduralCombatGroups(waveNumber, pressureTier, routeIndexes);
+
+  return {
+    id: `wave-${String(waveNumber).padStart(2, "0")}`,
+    name: isBoss
+      ? `Boss: Nucleo Autonomo ${Math.floor(waveNumber / ENDLESS_BOSS_INTERVAL)}`
+      : `Incursao Tech ${waveNumber}`,
+    isBoss,
+    mapStageIndex,
+    bossRewardSigils: isBoss ? Math.min(3, 1 + Math.floor(waveNumber / 15)) : undefined,
+    groups
+  };
+};
+
+const createProceduralCombatGroups = (
+  waveNumber: number,
+  pressureTier: number,
+  routeIndexes: readonly number[]
+) => {
+  const primaryRoute = routeIndexes[waveNumber % routeIndexes.length] ?? 0;
+  const secondaryRoute = routeIndexes[(waveNumber + 1) % routeIndexes.length] ?? primaryRoute;
+  const tertiaryRoute = routeIndexes[(waveNumber + 2) % routeIndexes.length] ?? secondaryRoute;
+  const scale = 1 + Math.floor((waveNumber - 11) / 3) * 0.12;
+
+  return [
+    {
+      enemyTypeId: waveNumber % 3 === 0 ? "swarm" : "runner",
+      count: Math.round((24 + pressureTier * 5) * scale),
+      intervalMs: Math.max(110, Math.round(320 - pressureTier * 10)),
+      startDelayMs: 260,
+      pathIndex: primaryRoute
+    },
+    {
+      enemyTypeId: waveNumber % 4 === 0 ? "tank" : "shield",
+      count: Math.round(8 + pressureTier * 2.2),
+      intervalMs: Math.max(420, Math.round(760 - pressureTier * 18)),
+      startDelayMs: 1050,
+      pathIndex: secondaryRoute
+    },
+    {
+      enemyTypeId: waveNumber % 2 === 0 ? "oracle-drone" : "synthetic-archivist",
+      count: Math.round(6 + pressureTier * 1.7),
+      intervalMs: Math.max(360, Math.round(620 - pressureTier * 12)),
+      startDelayMs: 2100,
+      pathIndex: tertiaryRoute
+    }
+  ] as const;
+};
+
+const createProceduralBossGroups = (
+  waveNumber: number,
+  pressureTier: number,
+  routeIndexes: readonly number[]
+) => {
+  const bossCount = Math.min(routeIndexes.length, 1 + Math.floor(waveNumber / 10));
+  const bossGroups = routeIndexes.slice(0, bossCount).map((pathIndex, index) => ({
+    enemyTypeId: "boss-reliquary",
+    count: 1,
+    intervalMs: 1000,
+    startDelayMs: 500 + index * 1350,
+    pathIndex
+  }));
+  const supportGroups = [
+    {
+      enemyTypeId: "swarm",
+      count: Math.round(38 + pressureTier * 6),
+      intervalMs: Math.max(95, Math.round(150 - pressureTier * 3)),
+      startDelayMs: 900,
+      pathIndex: routeIndexes.at(-1) ?? 0
+    },
+    {
+      enemyTypeId: "shield",
+      count: Math.round(12 + pressureTier * 2.6),
+      intervalMs: Math.max(360, Math.round(520 - pressureTier * 9)),
+      startDelayMs: 1900,
+      pathIndex: routeIndexes[1] ?? 0
+    },
+    {
+      enemyTypeId: "synthetic-archivist",
+      count: Math.round(6 + pressureTier * 1.8),
+      intervalMs: Math.max(420, Math.round(680 - pressureTier * 10)),
+      startDelayMs: 2850,
+      pathIndex: routeIndexes[2] ?? routeIndexes[0] ?? 0
+    }
+  ];
+
+  return [...bossGroups, ...supportGroups];
+};
+
+const getEnemyThreatWeight = (enemyTypeId: string): number => {
+  if (enemyTypeId.includes("boss")) {
+    return 13.5;
+  }
+
+  if (enemyTypeId === "tank") {
+    return 6.4;
+  }
+
+  if (enemyTypeId === "shield" || enemyTypeId === "synthetic-archivist") {
+    return 4.8;
+  }
+
+  if (enemyTypeId === "oracle-drone") {
+    return 3.8;
+  }
+
+  if (enemyTypeId === "swarm") {
+    return 1.8;
+  }
+
+  return 2.6;
+};

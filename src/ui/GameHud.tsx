@@ -3,7 +3,7 @@ import { getPlayerClassDefinition } from "../game/data/playerClasses";
 import { getSkillEffectTotals } from "../game/data/skills";
 import { getTowerDefinition, getTowerDefinitionsForClass } from "../game/data/towers";
 import { towerProgression } from "../game/data/towerProgression";
-import { waveDefinitions } from "../game/data/waves";
+import { getWaveDefinition } from "../game/data/waves";
 import { gameUiBridge } from "../game/bridge/RewardBridge";
 import type { GameState, PlayerId, TowerDefinition, TowerEntity } from "../game/models/types";
 import { gridKey, isGridOnPath, isInsideGrid } from "../game/utils/grid";
@@ -41,18 +41,18 @@ export const GameHud = ({ state }: GameHudProps) => {
     return null;
   }
 
-  const wave = waveDefinitions[state.wave.currentWaveIndex];
+  const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
   return (
     <aside className="game-hud" aria-label="HUD de jogo">
       <section className="hud-objective" aria-label="Estado da wave">
         <div className="objective-primary">
           <span className="objective-kicker">{getPhaseLabel(state)}</span>
-          <strong>{wave?.name ?? "Run completa"}</strong>
+          <strong>{wave.name}</strong>
         </div>
         <div className="objective-track">
           <span>Base {state.baseHp}/{state.activeMap.baseHp}</span>
-          <span>Wave {Math.min(state.wave.currentWaveIndex + 1, waveDefinitions.length)}/{waveDefinitions.length}</span>
+          <span>Wave {state.wave.currentWaveIndex + 1} / infinito</span>
           <span>{getWaveStatus(state)}</span>
         </div>
         {!state.wave.active && state.phase === "playing" ? (

@@ -25,7 +25,7 @@ npm run ai:train
 Treino mais forte:
 
 ```bash
-npm run ai:train -- --generations 20 --population 64 --episodes 120 --promotion-episodes 600 --seed 14729
+npm run ai:train -- --generations 20 --population 64 --episodes 120 --target-waves 20 --promotion-episodes 600 --seed 14729
 ```
 
 Treino rápido:
@@ -49,6 +49,7 @@ npm run ai:train -- --seed-policy reports/learning/champion-policy.json --genera
 ```
 
 `--promotion-episodes` controla a prova final antes de salvar o campeão. Use valores maiores quando o objetivo for superar o bot atual, não apenas achar uma política promissora.
+`--target-waves` transforma o modo infinito em objetivo de treino. Aumente esse valor quando a IA estabilizar.
 
 ## Saídas
 
@@ -60,7 +61,7 @@ npm run ai:train -- --seed-policy reports/learning/champion-policy.json --genera
 ## Avaliar campeão aprendido
 
 ```bash
-npm run ai:simulate -- --policy reports/learning/champion-policy.json --episodes 1000
+npm run ai:simulate -- --policy reports/learning/champion-policy.json --episodes 1000 --target-waves 20
 ```
 
 Isso roda a política aprendida sem alterar o código-fonte. Quando ela provar estabilidade, podemos promover os pesos para o `ProBot`.

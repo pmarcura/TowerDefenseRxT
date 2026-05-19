@@ -3,7 +3,7 @@ import { getPlayerClassDefinition } from "../../game/data/playerClasses";
 import { getSkillEffectTotals } from "../../game/data/skills";
 import { getTowerDefinitionsForClass } from "../../game/data/towers";
 import { towerBranchDefinitions } from "../../game/data/towerBranches";
-import { waveDefinitions } from "../../game/data/waves";
+import { getWaveDefinition } from "../../game/data/waves";
 import type { GameAction } from "../../game/actions/types";
 import type { GridPoint, PlayerId, TowerDefinition } from "../../game/models/types";
 import { gridKey, isGridOnPath, isInsideGrid } from "../../game/utils/grid";
@@ -132,12 +132,12 @@ export const chooseReadyAction = (
 export const chooseWaitAction = (): GameAction => ({ type: "WAIT", deltaMs: 1000 });
 
 export const getCurrentWave = (state: HeadlessGameState) =>
-  waveDefinitions[state.currentWaveIndex] ?? waveDefinitions.at(-1);
+  getWaveDefinition(state.currentWaveIndex);
 
 export const getCurrentMap = (state: HeadlessGameState) => {
   const wave = getCurrentWave(state);
 
-  return getMapStage(wave?.mapStageIndex ?? 0);
+  return getMapStage(wave.mapStageIndex);
 };
 
 export const getTowerCostForState = (

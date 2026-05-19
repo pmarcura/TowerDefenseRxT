@@ -8,12 +8,18 @@ import { TowerDefenseEnv } from "../env/TowerDefenseEnv";
 import type { HeadlessGameState } from "../env/types";
 import { choosePolicyAction, type LearningPolicy } from "../learning/policy";
 import { ReplayRecorder, type ReplayRecord } from "../replay/ReplayRecorder";
+import {
+  createLearningSampleFromHeadlessState,
+  type LearningSample
+} from "../telemetry/learningSamples";
 
 export type AiSimulationOptions = {
   bot?: string;
   episodes?: number;
   seed?: number;
   maxSteps?: number;
+  targetWaveCount?: number;
+  maxLearningSamples?: number;
   debug?: boolean;
   players?: Partial<Record<PlayerId, string>>;
   policy?: LearningPolicy;
@@ -37,6 +43,7 @@ export type AiSimulationReport = {
   episodes: number;
   seed: number;
   maxSteps: number;
+  targetWaveCount: number;
   winRate: number;
   timeoutRate: number;
   averageWavesCleared: number;
@@ -49,6 +56,7 @@ export type AiSimulationReport = {
   episodesSummary: AiEpisodeSummary[];
   replaySamples: ReplayRecord[];
   recommendations: string[];
+  learningSamples: LearningSample[];
 };
 
 export type ClassPairStats = {
@@ -86,12 +94,15 @@ export const runAiSimulation = (
   const episodes = Math.max(1, Math.floor(options.episodes ?? 1000));
   const seed = options.seed ?? 14729;
   const maxSteps = Math.max(20, Math.floor(options.maxSteps ?? 260));
+  const targetWaveCount = Math.max(1, Math.floor(options.targetWaveCount ?? 20));
+  const maxLearningSamples = Math.max(0, Math.floor(options.maxLearningSamples ?? 12000));
   const bot = options.policy ? null : getHeadlessBot(options.bot ?? "random");
   const botId = options.policy?.id ?? bot?.id ?? "random";
   const classPairs: Record<string, MutableClassPairStats> = {};
   const towerUsage = createTowerUsage();
   const episodesSummary: AiEpisodeSummary[] = [];
   const replaySamples: ReplayRecord[] = [];
+  const learningSamples: LearningSample[] = [];
 
   let wins = 0;
   let timeouts = 0;
@@ -113,7 +124,8 @@ export const runAiSimulation = (
     const initialState = env.reset({
       seed: episodeSeed,
       debug: options.debug ?? botId === "bughunter",
-      players
+      players,
+      targetWaveCount
     });
     const recorder = new ReplayRecorder(
       episodeSeed,
@@ -125,6 +137,13 @@ export const runAiSimulation = (
     let lastState: HeadlessGameState = initialState;
     let crashed = false;
     let steps = 0;
+    const matchId = `headless-${episodeSeed}`;
+
+    pushLearningSample(
+      learningSamples,
+      maxLearningSamples,
+      createLearningSampleFromHeadlessState(matchId, "headless", "run-start", initialState)
+    );
 
     try {
       for (; steps < maxSteps; steps += 1) {
@@ -145,6 +164,32 @@ export const runAiSimulation = (
         );
         invalidActions += result.errors.length;
         invariantFailures += result.invariantFailures.length;
+        if (
+          result.errors.length > 0 ||
+          result.events.some((event) =>
+            event.kind === "wave-started" ||
+            event.kind === "wave-cleared" ||
+            event.kind === "game-ended"
+          )
+        ) {
+          pushLearningSample(
+            learningSamples,
+            maxLearningSamples,
+            createLearningSampleFromHeadlessState(
+              matchId,
+              "headless",
+              result.events.some((event) => event.kind === "wave-started")
+                ? "wave-start"
+                : result.events.some((event) => event.kind === "wave-cleared")
+                  ? "wave-clear"
+                  : "player-action",
+              result.state,
+              action,
+              undefined,
+              result.errors.map((error) => error.message)
+            )
+          );
+        }
         lastState = result.state;
 
         if (result.done) {
@@ -160,6 +205,11 @@ export const runAiSimulation = (
     collectTowerUsage(towerUsage, lastState);
 
     const result = getEpisodeResult(lastState, crashed, steps, maxSteps);
+    pushLearningSample(
+      learningSamples,
+      maxLearningSamples,
+      createLearningSampleFromHeadlessState(matchId, "headless", "run-end", lastState, undefined, result)
+    );
     const wavesCleared = lastState.waveLog.filter((wave) => wave.cleared).length;
     const classPair = `${getClassShortName(lastState.players.p1.classId)} + ${getClassShortName(
       lastState.players.p2.classId
@@ -217,6 +267,7 @@ export const runAiSimulation = (
     episodes,
     seed,
     maxSteps,
+    targetWaveCount,
     winRate: wins / episodes,
     timeoutRate: timeouts / episodes,
     averageWavesCleared: wavesClearedTotal / episodes,
@@ -228,12 +279,29 @@ export const runAiSimulation = (
     towerUsage: finalizeTowerUsage(towerUsage, totalBuilt),
     episodesSummary,
     replaySamples,
-    recommendations: []
+    recommendations: [],
+    learningSamples
   };
 
   report.recommendations = createRecommendations(report);
 
   return report;
+};
+
+const pushLearningSample = (
+  samples: LearningSample[],
+  maxLearningSamples: number,
+  sample: LearningSample
+): void => {
+  if (maxLearningSamples <= 0) {
+    return;
+  }
+
+  samples.push(sample);
+
+  if (samples.length > maxLearningSamples) {
+    samples.splice(0, samples.length - maxLearningSamples);
+  }
 };
 
 export const formatAiSimulationReport = (report: AiSimulationReport): string => {
@@ -244,6 +312,7 @@ export const formatAiSimulationReport = (report: AiSimulationReport): string => 
     `- Bot: ${report.bot}`,
     `- Episodes: ${report.episodes}`,
     `- Seed: ${report.seed}`,
+    `- Target waves: ${report.targetWaveCount}`,
     `- Win rate: ${formatPercent(report.winRate)}`,
     `- Timeout rate: ${formatPercent(report.timeoutRate)}`,
     `- Avg waves cleared: ${report.averageWavesCleared.toFixed(2)}`,

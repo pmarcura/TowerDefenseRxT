@@ -2,7 +2,7 @@ import { getEnemyDefinition } from "../../game/data/enemies";
 import { getSkillDefinition } from "../../game/data/skills";
 import { getTowerBranchDefinition, towerBranchDefinitions } from "../../game/data/towerBranches";
 import { getTowerDefinitionsForClass } from "../../game/data/towers";
-import { waveDefinitions } from "../../game/data/waves";
+import { ENDLESS_BOSS_INTERVAL, getWaveDefinitionsForAnalysis } from "../../game/data/waves";
 import type { GameAction } from "../../game/actions/types";
 import type {
   GridPoint,
@@ -437,7 +437,9 @@ const scoreTowerForPolicy = (
   const dps = tower.damage > 0 ? tower.damage / Math.max(0.2, tower.cooldownMs / 1000) : 0;
   const costEfficiency = dps / Math.max(32, cost);
   const routePressure = map.paths.length * policy.weights.routeGrowthBias;
-  const bossSoon = Boolean(wave?.isBoss) || state.currentWaveIndex === 4 || state.currentWaveIndex >= 8;
+  const bossSoon =
+    Boolean(wave?.isBoss) ||
+    (state.currentWaveIndex + 1) % ENDLESS_BOSS_INTERVAL >= ENDLESS_BOSS_INTERVAL - 1;
   let score =
     3 +
     costEfficiency * 11 +
@@ -536,7 +538,7 @@ const getEnemyMix = () => {
     boss: 0
   };
 
-  for (const wave of waveDefinitions) {
+  for (const wave of getWaveDefinitionsForAnalysis(24)) {
     for (const group of wave.groups) {
       const enemy = getEnemyDefinition(group.enemyTypeId);
 

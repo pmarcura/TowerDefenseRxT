@@ -1,5 +1,5 @@
 import { playerClassDefinitions } from "../data/playerClasses";
-import { waveDefinitions } from "../data/waves";
+import { getWaveDefinition } from "../data/waves";
 import { GameRegistry } from "../GameRegistry";
 import type { PlayerId } from "../models/types";
 import type { GameSystem } from "./GameSystem";
@@ -93,7 +93,7 @@ export class ClassSelectionSystem implements GameSystem {
 
   private startPlaying(): void {
     const state = this.registry.state;
-    const nextWave = waveDefinitions[state.wave.currentWaveIndex];
+    const nextWave = getWaveDefinition(state.wave.currentWaveIndex);
 
     state.classSelection = null;
     state.phase = "playing";
@@ -102,9 +102,7 @@ export class ClassSelectionSystem implements GameSystem {
     this.registry.clearWaveReadiness(true);
     state.wave.notice = {
       title: "Run sincronizada",
-      subtitle: nextWave
-        ? `${nextWave.name}: construam e deem pronto para iniciar`
-        : "Sem waves restantes",
+      subtitle: `${nextWave.name}: construam e deem pronto para iniciar`,
       timerMs: 5200,
       tone: "start"
     };

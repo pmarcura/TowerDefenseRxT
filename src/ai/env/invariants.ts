@@ -1,5 +1,6 @@
 import { getMapStage } from "../../game/data/map";
 import { getTowerDefinition } from "../../game/data/towers";
+import { getWaveDefinition } from "../../game/data/waves";
 import type { PlayerId } from "../../game/models/types";
 import { gridKey, isInsideGrid } from "../../game/utils/grid";
 import type { HeadlessGameState } from "./types";
@@ -72,11 +73,7 @@ export const checkHeadlessInvariants = (state: HeadlessGameState): string[] => {
 };
 
 const getMapStageForState = (state: HeadlessGameState) => {
-  const lastWave = state.waveLog.at(-1);
+  const wave = getWaveDefinition(Math.max(0, state.currentWaveIndex));
 
-  if (!lastWave) {
-    return getMapStage(0);
-  }
-
-  return getMapStage(Math.max(0, state.currentWaveIndex));
+  return getMapStage(wave.mapStageIndex);
 };

@@ -71,6 +71,7 @@ export type HeadlessGameState = {
   tick: number;
   elapsedMs: number;
   currentWaveIndex: number;
+  targetWaveCount: number;
   baseHp: number;
   readyCountdownMs: number;
   players: Record<PlayerId, HeadlessPlayerState>;
@@ -84,4 +85,5 @@ export type HeadlessResetOptions = {
   mapId?: string;
   debug?: boolean;
   players?: Partial<Record<PlayerId, string>>;
+  targetWaveCount?: number;
 };

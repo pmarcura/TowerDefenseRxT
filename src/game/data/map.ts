@@ -274,5 +274,100 @@ export const mapStages: readonly MapDefinition[] = [
 
 export const mapDefinition = mapStages[0];
 
-export const getMapStage = (stageIndex: number): MapDefinition =>
-  mapStages[Math.min(Math.max(stageIndex, 0), mapStages.length - 1)];
+export const getMapStage = (stageIndex: number): MapDefinition => {
+  const safeIndex = Math.max(0, Math.floor(stageIndex));
+  const fixedStage = mapStages[safeIndex];
+
+  if (fixedStage) {
+    return fixedStage;
+  }
+
+  return createProceduralMapStage(safeIndex);
+};
+
+const createProceduralMapStage = (stageIndex: number): MapDefinition => {
+  const extraIndex = stageIndex - mapStages.length + 1;
+  const columns = Math.min(24, 18 + Math.floor(extraIndex / 2));
+  const rows = Math.min(12, 10 + Math.floor(extraIndex / 4));
+  const pathCount = Math.min(6, 3 + Math.floor(extraIndex / 2));
+  const baseRow = Math.floor(rows / 2) + (extraIndex % 2 === 0 ? 1 : 0);
+  const paths = Array.from({ length: pathCount }, (_, pathIndex) =>
+    createProceduralPath(columns, rows, pathIndex, extraIndex, baseRow)
+  );
+
+  return {
+    id: `stage-proc-${String(stageIndex + 1).padStart(2, "0")}`,
+    name: `Mapa Expandido ${stageIndex + 1}`,
+    columns,
+    rows,
+    tileSize: 43,
+    origin: {
+      x: Math.max(186, 253 - Math.max(0, columns - 18) * 18),
+      y: Math.max(96, 126 - Math.max(0, rows - 10) * 10)
+    },
+    baseHp: mapDefinition.baseHp + Math.floor(extraIndex / 3),
+    startingCreditsByPlayer,
+    paths
+  };
+};
+
+const createProceduralPath = (
+  columns: number,
+  rows: number,
+  pathIndex: number,
+  extraIndex: number,
+  baseRow: number
+) => {
+  const startRows = [
+    baseRow,
+    Math.max(1, baseRow - 3),
+    Math.min(rows - 2, baseRow + 3),
+    Math.max(1, baseRow - 1),
+    Math.min(rows - 2, baseRow + 1),
+    Math.max(1, baseRow - 4)
+  ];
+  const points: { col: number; row: number }[] = [];
+  let col = 0;
+  let row = clampRow(startRows[pathIndex % startRows.length], rows);
+  const endRow = clampRow(baseRow + (pathIndex % 2 === 0 ? 0 : pathIndex > 2 ? 1 : -1), rows);
+
+  points.push({ col, row });
+
+  while (col < columns - 1) {
+    const segment = 2 + ((extraIndex + pathIndex + col) % 4);
+    const targetCol = Math.min(columns - 1, col + segment);
+    const shouldBend = col > 0 && targetCol < columns - 1;
+    const bendAmplitude = 1 + ((extraIndex + pathIndex + targetCol) % 3);
+    const bendDirection = (extraIndex + pathIndex + targetCol) % 2 === 0 ? 1 : -1;
+    const targetRow = shouldBend
+      ? clampRow(row + bendAmplitude * bendDirection, rows)
+      : endRow;
+
+    while (col < targetCol) {
+      col += 1;
+      points.push({ col, row });
+    }
+
+    while (row !== targetRow) {
+      row += row < targetRow ? 1 : -1;
+      points.push({ col, row });
+    }
+  }
+
+  while (row !== endRow) {
+    row += row < endRow ? 1 : -1;
+    points.push({ col, row });
+  }
+
+  return dedupeAdjacent(points);
+};
+
+const clampRow = (row: number, rows: number): number =>
+  Math.max(1, Math.min(rows - 2, row));
+
+const dedupeAdjacent = (points: { col: number; row: number }[]) =>
+  points.filter((point, index) => {
+    const previous = points[index - 1];
+
+    return !previous || previous.col !== point.col || previous.row !== point.row;
+  });

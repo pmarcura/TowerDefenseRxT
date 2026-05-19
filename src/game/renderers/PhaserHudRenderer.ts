@@ -1,10 +1,9 @@
 import Phaser from "phaser";
 import { GAME_WIDTH } from "../config/constants";
-import { getEnemyDefinition } from "../data/enemies";
 import { getPlayerClassDefinition } from "../data/playerClasses";
 import { towerBranchDefinitions } from "../data/towerBranches";
 import { getTowerDefinition, getTowerDefinitionsForClass } from "../data/towers";
-import { waveDefinitions } from "../data/waves";
+import { getWaveDefinition, getWaveThreat, getWaveTimelineWindow } from "../data/waves";
 import { gameDesign, toHexColor } from "../design/gameDesignSystem";
 import { GameRegistry } from "../GameRegistry";
 import type { GameState, PlayerId, TowerEntity, TowerRuntimeStats } from "../models/types";
@@ -73,24 +72,26 @@ export class PhaserHudRenderer {
   }
 
   private drawTimeline(state: GameState): void {
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
     const width = gameDesign.hud.timelineWidth;
     const height = gameDesign.hud.timelineHeight;
     const x = (GAME_WIDTH - width) / 2;
     const y = 10;
+    const timeline = getWaveTimelineWindow(state.wave.currentWaveIndex, 10);
     const nodeGap = 38;
     const startX = x + 70;
 
     this.graphics.fillStyle(gameDesign.color.void, 0.78);
     this.graphics.fillRoundedRect(x, y, width, height, gameDesign.radius.lg);
-    this.graphics.lineStyle(1, wave?.isBoss ? 0xff4f9a : 0x83f3ff, wave?.isBoss ? 0.46 : 0.24);
+    this.graphics.lineStyle(1, wave.isBoss ? 0xff4f9a : 0x83f3ff, wave.isBoss ? 0.46 : 0.24);
     this.graphics.strokeRoundedRect(x, y, width, height, gameDesign.radius.lg);
 
-    for (let index = 0; index < waveDefinitions.length; index += 1) {
-      const nodeWave = waveDefinitions[index];
+    for (let index = 0; index < timeline.length; index += 1) {
+      const nodeWave = timeline[index].wave;
+      const waveIndex = timeline[index].index;
       const nodeX = startX + index * nodeGap;
-      const completed = index < state.wave.currentWaveIndex;
-      const current = index === state.wave.currentWaveIndex;
+      const completed = waveIndex < state.wave.currentWaveIndex;
+      const current = waveIndex === state.wave.currentWaveIndex;
       const color = nodeWave.isBoss ? 0xff4f9a : current ? 0x83f3ff : 0x8ea4b3;
 
       if (index > 0) {
@@ -102,17 +103,17 @@ export class PhaserHudRenderer {
       this.graphics.fillCircle(nodeX, y + 19, nodeWave.isBoss ? 9 : 7);
       this.graphics.lineStyle(current ? 3 : 1, color, current ? 0.92 : 0.46);
       this.graphics.strokeCircle(nodeX, y + 19, nodeWave.isBoss ? 11 : 9);
-      this.drawText(nodeX, y + 31, `${index + 1}`, gameDesign.font.size.meta, current ? "#edf7ff" : "#6f8492", gameDesign.font.weight.strong, 0.5);
+      this.drawText(nodeX, y + 31, `${waveIndex + 1}`, gameDesign.font.size.meta, current ? "#edf7ff" : "#6f8492", gameDesign.font.weight.strong, 0.5);
     }
 
     const status = this.getWaveStatus(state);
-    const threat = wave ? this.getThreat(wave) : 0;
+    const threat = getWaveThreat(wave);
     const routes = state.wave.snapshot.activePathIndexes.length;
     const alive = state.wave.snapshot.aliveEnemies;
     const remaining = state.wave.snapshot.totalSpawnsRemaining;
 
-    this.drawText(x + 14, y + 7, status, 9, wave?.isBoss ? "#ff8db4" : "#83f3ff", "900");
-    this.drawText(x + 14, y + 27, wave?.name ?? "Run completa", 13, "#edf7ff", "900", 0, 185);
+    this.drawText(x + 14, y + 7, status, 9, wave.isBoss ? "#ff8db4" : "#83f3ff", "900");
+    this.drawText(x + 14, y + 27, wave.name, 13, "#edf7ff", "900", 0, 185);
     this.drawText(
       x + width - 14,
       y + 34,
@@ -369,17 +370,6 @@ export class PhaserHudRenderer {
     ].filter(Boolean);
 
     return `AUTO ${(state.wave.nextWaveInMs / 1000).toFixed(0)}S · FALTA ${missing.join("+")}`;
-  }
-
-  private getThreat(wave: (typeof waveDefinitions)[number]): number {
-    const rawThreat = wave.groups.reduce((sum, group) => {
-      const enemy = getEnemyDefinition(group.enemyTypeId);
-      const bossBonus = enemy.traits.includes("boss") ? 36 : 0;
-
-      return sum + group.count * (enemy.baseDamage * 2 + enemy.armor + enemy.maxHp / 90) + bossBonus;
-    }, 0);
-
-    return Math.min(99, Math.max(1, Math.round(rawThreat)));
   }
 
   private getNoticeColor(tone: string): number {

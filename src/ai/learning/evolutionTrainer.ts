@@ -22,6 +22,7 @@ export type TrainingOptions = {
   mutationRate?: number;
   mutationScale?: number;
   maxSteps?: number;
+  targetWaveCount?: number;
   curriculum?: boolean;
   promotionEpisodes?: number;
   seedPolicies?: readonly LearningPolicy[];
@@ -81,6 +82,7 @@ export const trainPolicy = (options: TrainingOptions = {}): TrainingReport => {
     mutationRate: options.mutationRate ?? 0.38,
     mutationScale: options.mutationScale ?? 0.18,
     maxSteps: options.maxSteps ?? 280,
+    targetWaveCount: options.targetWaveCount ?? 20,
     curriculum: options.curriculum ?? true,
     promotionEpisodes: options.promotionEpisodes ?? Math.max(180, Math.floor((options.episodesPerPolicy ?? 60) * 3)),
     seedPolicies: options.seedPolicies ?? [],
@@ -213,7 +215,8 @@ export const evaluatePolicy = (
     const env = new TowerDefenseEnv();
     let state = env.reset({
       seed: episodeSeed,
-      players: pickTrainingClasses(rng, episode)
+      players: pickTrainingClasses(rng, episode),
+      targetWaveCount: options.targetWaveCount
     });
     let steps = 0;
 
@@ -281,6 +284,7 @@ export const formatTrainingMarkdown = (report: TrainingReport): string => {
     `- Population: ${report.options.population}`,
     `- Episodes per policy: ${report.options.episodesPerPolicy}`,
     `- Promotion episodes: ${report.options.promotionEpisodes}`,
+    `- Target waves: ${report.options.targetWaveCount}`,
     `- Champion: ${report.champion.policy.id}`,
     `- Champion win rate: ${formatPercent(report.champion.winRate)}`,
     `- Baseline win rate: ${formatPercent(report.baseline.winRate)}`,

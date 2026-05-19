@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "../config/constants";
 import { getEnemyDefinition } from "../data/enemies";
-import { waveDefinitions } from "../data/waves";
+import { getWaveDefinition } from "../data/waves";
 import { gameDesign } from "../design/gameDesignSystem";
 import { GameRegistry } from "../GameRegistry";
 import type { GameState, RoundNoticeTone } from "../models/types";
@@ -151,12 +151,12 @@ export class UIScene extends Phaser.Scene {
       return;
     }
 
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
     const seconds = Math.ceil(state.wave.nextWaveInMs / 1000);
     const urgent = state.wave.nextWaveInMs <= 5000;
     const x = GAME_WIDTH / 2 - 176;
     const y = 72;
-    const accent = wave?.isBoss ? 0xff4f9a : urgent ? 0xffe39d : 0x83f3ff;
+    const accent = wave.isBoss ? 0xff4f9a : urgent ? 0xffe39d : 0x83f3ff;
     const pulse = urgent ? 0.72 + Math.sin(state.elapsedMs / 120) * 0.14 : 0.58;
 
     this.graphics.fillStyle(0x020712, 0.88);
@@ -170,15 +170,11 @@ export class UIScene extends Phaser.Scene {
     this.startBannerTitleText.setColor(urgent ? "#ffe39d" : "#83f3ff");
     this.startBannerTitleText.setFontSize(urgent ? 22 : 18);
     this.startBannerBodyText.setPosition(GAME_WIDTH / 2, y + (urgent ? 35 : 31));
-    this.startBannerBodyText.setText(`${wave?.name ?? "Proxima wave"} · R/Backspace acelera`);
+    this.startBannerBodyText.setText(`${wave.name} · R/Backspace acelera`);
   }
 
   private getWaveForecast(state: GameState) {
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
-
-    if (!wave) {
-      return { title: "RUN COMPLETA", body: "Sem novas ondas.", threat: 0, routes: 0, isBoss: false };
-    }
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
     const counts = new Map<string, number>();
     const routes = new Set<number>();

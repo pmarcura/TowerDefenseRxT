@@ -13,7 +13,6 @@ import {
   towerBranchDefinitions
 } from "./data/towerBranches";
 import { getTowerDefinitionsForClass } from "./data/towers";
-import { waveDefinitions } from "./data/waves";
 import type {
   AudioCueId,
   GamePhase,
@@ -27,9 +26,11 @@ import type {
   TowerAutoBuildId,
   TowerUpgradeBranchId
 } from "./models/types";
+import { RunTelemetry } from "./telemetry/RunTelemetry";
 import { gridKey } from "./utils/grid";
 
 const SETTINGS_STORAGE_KEY = "aegis-sacra-settings";
+const runTelemetry = RunTelemetry.getInstance();
 
 const defaultSettings: GameSettings = {
   masterVolume: 0.78,
@@ -184,6 +185,7 @@ export class GameRegistry {
         }
       }
     };
+    runTelemetry.startRun(this.state, "local-human");
     this.notifyChange();
   }
 
@@ -228,6 +230,7 @@ export class GameRegistry {
     this.state.wave.completed = true;
     this.state.runSummary = this.createRunSummary(result);
     this.pushPresentationEvent("audio", 1600, { cueId: result });
+    runTelemetry.record("run-end", this.state);
     this.notifyChange();
   }
 
@@ -467,6 +470,12 @@ export class GameRegistry {
       "success",
       1500
     );
+    runTelemetry.record("player-action", this.state, {
+      type: "UPGRADE_TOWER",
+      playerId,
+      towerId,
+      branchId
+    });
     this.notifyChange();
 
     return true;
@@ -562,6 +571,11 @@ export class GameRegistry {
     this.pushPresentationEvent("audio", 500, { cueId: "ui_confirm" });
     this.pushPlayerNotice(playerId, "PRONTO", "timer acelerado", "success", 1600);
     this.pushMessage(`${playerId.toUpperCase()} pronto para a wave`, 1500);
+    runTelemetry.record("player-action", state, {
+      type: "SET_READY",
+      playerId,
+      ready: true
+    });
 
     if (state.wave.nextWaveInMs <= 0) {
       state.wave.nextWaveInMs = WAVE_AUTO_START_MS;
@@ -615,11 +629,6 @@ export class GameRegistry {
     state.wave.active = false;
     state.wave.currentWaveIndex += 1;
 
-    if (state.wave.currentWaveIndex >= waveDefinitions.length) {
-      this.finishRun("victory");
-      return true;
-    }
-
     this.clearWaveReadiness(true);
     this.pushMessage("DEBUG wave pulada", 1200);
     this.pushPlayerNotice("p1", "DEBUG", "proxima wave armada", "info", 1000);
@@ -660,10 +669,7 @@ export class GameRegistry {
     return {
       result,
       elapsedMs: this.state.elapsedMs,
-      wavesCleared:
-        result === "victory"
-          ? waveDefinitions.length
-          : Math.max(0, this.state.wave.currentWaveIndex),
+      wavesCleared: Math.max(0, this.state.wave.currentWaveIndex),
       baseHpRemaining: this.state.baseHp,
       playerClasses: { ...this.state.playerClasses },
       combatStats: cloneStats,

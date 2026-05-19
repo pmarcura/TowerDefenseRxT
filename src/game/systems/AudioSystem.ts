@@ -1,5 +1,5 @@
 import { GameRegistry } from "../GameRegistry";
-import { waveDefinitions } from "../data/waves";
+import { getWaveDefinition } from "../data/waves";
 import type { AudioCueId, GameState } from "../models/types";
 import type { GameSystem } from "./GameSystem";
 
@@ -164,7 +164,7 @@ export class AudioSystem implements GameSystem {
       return "defeat";
     }
 
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
     if (wave?.isBoss && (state.wave.active || state.wave.nextWaveInMs < 5000)) {
       return "boss";

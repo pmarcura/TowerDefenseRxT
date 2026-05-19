@@ -4,12 +4,15 @@ import { createEmptyTowerBranchRanks } from "../data/towerBranches";
 import { getTowerXpToNextLevel } from "../data/towerProgression";
 import { GameRegistry } from "../GameRegistry";
 import type { GridPoint, PlayerId } from "../models/types";
+import { RunTelemetry } from "../telemetry/RunTelemetry";
 import { clampGrid, gridKey, gridToWorld, isGridOnPath, isInsideGrid } from "../utils/grid";
 import type { EconomySystem } from "./EconomySystem";
 import type { GameSystem } from "./GameSystem";
 import type { SkillTreeSystem } from "./SkillTreeSystem";
 
 export class BuildSystem implements GameSystem {
+  private readonly telemetry = RunTelemetry.getInstance();
+
   constructor(
     private readonly registry: GameRegistry,
     private readonly economySystem: EconomySystem,
@@ -99,6 +102,12 @@ export class BuildSystem implements GameSystem {
         "warning",
         1900
       );
+      this.telemetry.record(
+        "player-action",
+        state,
+        { type: "BUILD_TOWER", playerId, towerId, grid: { ...cursor.grid } },
+        [buildBlockReason]
+      );
       return false;
     }
 
@@ -117,6 +126,12 @@ export class BuildSystem implements GameSystem {
         `${tower.shortName}: ${availableCredits}/${cost} creditos`,
         "danger",
         2400
+      );
+      this.telemetry.record(
+        "player-action",
+        state,
+        { type: "BUILD_TOWER", playerId, towerId, grid: { ...cursor.grid } },
+        [`faltam ${missingCredits} creditos`]
       );
       return false;
     }
@@ -154,6 +169,12 @@ export class BuildSystem implements GameSystem {
       "success",
       1600
     );
+    this.telemetry.record("player-action", state, {
+      type: "BUILD_TOWER",
+      playerId,
+      towerId,
+      grid: { ...cursor.grid }
+    });
 
     return true;
   }

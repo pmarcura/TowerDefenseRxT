@@ -13,6 +13,7 @@ const eliteCount = readNumberArg("--elites", 6);
 const mutationRate = readNumberArg("--mutation-rate", 0.38);
 const mutationScale = readNumberArg("--mutation-scale", 0.18);
 const maxSteps = readNumberArg("--max-steps", 280);
+const targetWaveCount = readNumberArg("--target-waves", 20);
 const promotionEpisodes = readNumberArg("--promotion-episodes", Number.NaN);
 const fresh = args.includes("--fresh");
 const seedPolicyPath = readStringArg("--seed-policy");
@@ -45,6 +46,7 @@ const report = trainer.trainPolicy({
   mutationRate,
   mutationScale,
   maxSteps,
+  targetWaveCount,
   promotionEpisodes: Number.isFinite(promotionEpisodes) ? promotionEpisodes : undefined,
   seedPolicies
 });

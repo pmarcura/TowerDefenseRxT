@@ -27,7 +27,7 @@ import {
   getTowerXpToNextLevel,
   towerProgression
 } from "../../game/data/towerProgression";
-import { waveDefinitions } from "../../game/data/waves";
+import { getWaveDefinition } from "../../game/data/waves";
 import type {
   ActionError,
   ActionEvent,
@@ -67,10 +67,11 @@ type TowerContribution = {
 
 const ENV_VERSION = "aegis-headless-v1";
 const playerIds: readonly PlayerId[] = ["p1", "p2"];
+const DEFAULT_TARGET_WAVE_COUNT = 20;
 
 export class TowerDefenseEnv {
   private rng = new Rng(1);
-  private stateInternal: HeadlessGameState = createInitialState(1, {}, false);
+  private stateInternal: HeadlessGameState = createInitialState(1, {}, false, DEFAULT_TARGET_WAVE_COUNT);
 
   get state(): HeadlessGameState {
     return cloneState(this.stateInternal);
@@ -79,7 +80,12 @@ export class TowerDefenseEnv {
   reset(options: HeadlessResetOptions = {}): HeadlessGameState {
     const seed = options.seed ?? 14729;
     this.rng = new Rng(seed);
-    this.stateInternal = createInitialState(seed, options.players ?? {}, options.debug ?? false);
+    this.stateInternal = createInitialState(
+      seed,
+      options.players ?? {},
+      options.debug ?? false,
+      options.targetWaveCount ?? DEFAULT_TARGET_WAVE_COUNT
+    );
     this.stateInternal.mapId = options.mapId ?? mapDefinition.id;
 
     return this.state;
@@ -522,16 +528,7 @@ export class TowerDefenseEnv {
   }
 
   private startAndResolveWave(events: ActionEvent[]): number {
-    const wave = waveDefinitions[this.stateInternal.currentWaveIndex];
-
-    if (!wave) {
-      this.stateInternal.phase = "victory";
-      events.push({
-        kind: "game-ended",
-        message: "vitoria"
-      });
-      return 2;
-    }
+    const wave = getWaveDefinition(this.stateInternal.currentWaveIndex);
 
     this.stateInternal.phase = "combat";
     events.push({
@@ -571,11 +568,11 @@ export class TowerDefenseEnv {
       message: `${wave.name} concluida`
     });
 
-    if (this.stateInternal.currentWaveIndex >= waveDefinitions.length) {
+    if (this.stateInternal.currentWaveIndex >= this.stateInternal.targetWaveCount) {
       this.stateInternal.phase = "victory";
       events.push({
         kind: "game-ended",
-        message: "vitoria"
+        message: `sobreviveu ${this.stateInternal.targetWaveCount} waves`
       });
       return 2.5;
     }
@@ -979,7 +976,8 @@ export class TowerDefenseEnv {
 const createInitialState = (
   seed: number,
   requestedPlayers: Partial<Record<PlayerId, string>>,
-  debug: boolean
+  debug: boolean,
+  targetWaveCount: number
 ): HeadlessGameState => ({
   version: ENV_VERSION,
   seed,
@@ -990,6 +988,7 @@ const createInitialState = (
   tick: 0,
   elapsedMs: 0,
   currentWaveIndex: 0,
+  targetWaveCount: Math.max(1, Math.floor(targetWaveCount)),
   baseHp: mapDefinition.baseHp,
   readyCountdownMs: WAVE_AUTO_START_MS,
   players: {
@@ -1027,9 +1026,9 @@ const createRewardChoice = (
 };
 
 const getCurrentMap = (state: HeadlessGameState): MapDefinition => {
-  const wave = waveDefinitions[state.currentWaveIndex] ?? waveDefinitions.at(-1);
+  const wave = getWaveDefinition(state.currentWaveIndex);
 
-  return getMapStage(wave?.mapStageIndex ?? 0);
+  return getMapStage(wave.mapStageIndex);
 };
 
 const getKnownTower = (towerId: string): TowerDefinition | null =>

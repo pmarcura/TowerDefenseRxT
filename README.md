@@ -16,7 +16,8 @@ npm run dev
 ```bash
 npm run ai:simulate -- --bot greedy --episodes 1000
 npm run ai:simulate -- --bot pro --episodes 1000
-npm run ai:train
+npm run ai:simulate -- --bot pro --episodes 1000 --target-waves 20
+npm run ai:train -- --target-waves 20
 npm run ai:simulate -- --policy reports/learning/champion-policy.json --episodes 1000
 npm run ai:simulate -- --bot bughunter --episodes 1000
 npm run simulate:balance -- --runs 1200
@@ -33,7 +34,13 @@ Relatórios locais:
 - `reports/learning/champion-policy.json`
 - `reports/ai/dashboard.html`
 - `reports/ai/latest.md`
+- `reports/ai/learning-dataset.jsonl`
 - `reports/ai/analysis.md`
+
+Leia tambem:
+
+- `docs/AI_SELF_LEARNING.md`
+- `docs/ENDLESS_AND_AI_DATA.md`
 - `reports/balance/latest.md`
 
 ## Controles

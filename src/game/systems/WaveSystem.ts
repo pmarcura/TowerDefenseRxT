@@ -1,8 +1,9 @@
 import { WAVE_COMPLETION_BONUS_PER_PLAYER } from "../config/constants";
 import { getMapStage } from "../data/map";
-import { waveDefinitions } from "../data/waves";
+import { getWaveDefinition } from "../data/waves";
 import { GameRegistry } from "../GameRegistry";
 import type { WaveDefinition } from "../models/types";
+import { RunTelemetry } from "../telemetry/RunTelemetry";
 import type { EconomySystem } from "./EconomySystem";
 import type { EnemySystem } from "./EnemySystem";
 import type { GameSystem } from "./GameSystem";
@@ -19,6 +20,7 @@ type RuntimeWaveGroup = {
 
 export class WaveSystem implements GameSystem {
   private activeGroups: RuntimeWaveGroup[] = [];
+  private readonly telemetry = RunTelemetry.getInstance();
 
   constructor(
     private readonly registry: GameRegistry,
@@ -52,12 +54,7 @@ export class WaveSystem implements GameSystem {
 
   private startCurrentWave(): void {
     const state = this.registry.state;
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
-
-    if (!wave) {
-      this.registry.finishRun("victory");
-      return;
-    }
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
     state.activeMap = getMapStage(wave.mapStageIndex);
     state.combatStats.p1.waveDamageDealt = 0;
@@ -79,6 +76,7 @@ export class WaveSystem implements GameSystem {
     this.registry.pushPlayerNotice("p1", "WAVE LIVE", wave.name, wave.isBoss ? "danger" : "info", 1600);
     this.registry.pushPlayerNotice("p2", "WAVE LIVE", wave.name, wave.isBoss ? "danger" : "info", 1600);
     this.registry.pushMessage(`${wave.name} - ${state.activeMap.name}`, 2200);
+    this.telemetry.record("wave-start", state);
     this.updateWaveSnapshot();
   }
 
@@ -108,8 +106,9 @@ export class WaveSystem implements GameSystem {
 
   private completeCurrentWave(): void {
     const state = this.registry.state;
-    const currentWave = waveDefinitions[state.wave.currentWaveIndex];
+    const currentWave = getWaveDefinition(state.wave.currentWaveIndex);
     const nextWaveIndex = state.wave.currentWaveIndex + 1;
+    const nextWave = getWaveDefinition(nextWaveIndex);
 
     const creditsGranted = this.economySystem.rewardTeam(WAVE_COMPLETION_BONUS_PER_PLAYER);
     state.enemies = [];
@@ -123,42 +122,30 @@ export class WaveSystem implements GameSystem {
 
       state.wave.active = false;
       state.wave.currentWaveIndex = nextWaveIndex;
-
-      if (nextWaveIndex >= waveDefinitions.length) {
-        state.wave.completed = true;
-      } else {
-        state.activeMap = getMapStage(waveDefinitions[nextWaveIndex].mapStageIndex);
-        this.registry.clearWaveReadiness(true);
-        this.notifyNewRoutes(currentWave, waveDefinitions[nextWaveIndex]);
-      }
+      state.activeMap = getMapStage(nextWave.mapStageIndex);
+      this.registry.clearWaveReadiness(true);
+      this.notifyNewRoutes(currentWave, nextWave);
 
       this.setRoundNotice(
         "Boss vencido",
-        nextWaveIndex >= waveDefinitions.length
-          ? "Escolham a ultima evolucao da run"
-          : `Recompensa liberada. Depois: ${waveDefinitions[nextWaveIndex].name}`,
+        `Recompensa liberada. Depois: ${nextWave.name}`,
         "boss",
         2600
       );
       this.skillTreeSystem.createRewardChoices(currentWave.id);
       this.registry.pushMessage(`Boss vencido: +${currentWave.bossRewardSigils} sigilo`);
-      return;
-    }
-
-    if (nextWaveIndex >= waveDefinitions.length) {
-      this.registry.pushMessage("Vitoria");
-      this.registry.finishRun("victory");
+      this.telemetry.record("wave-clear", state);
       return;
     }
 
     state.wave.currentWaveIndex = nextWaveIndex;
-    state.activeMap = getMapStage(waveDefinitions[nextWaveIndex].mapStageIndex);
+    state.activeMap = getMapStage(nextWave.mapStageIndex);
     state.wave.active = false;
     this.registry.clearWaveReadiness(true);
-    this.notifyNewRoutes(currentWave, waveDefinitions[nextWaveIndex]);
+    this.notifyNewRoutes(currentWave, nextWave);
     this.setRoundNotice(
       "Onda contida",
-      `Proxima: ${waveDefinitions[nextWaveIndex].name}. Pronto acelera; timer inicia sozinho.`,
+      `Proxima: ${nextWave.name}. Pronto acelera; timer inicia sozinho.`,
       "complete",
       5200
     );
@@ -177,6 +164,7 @@ export class WaveSystem implements GameSystem {
       2200
     );
     this.registry.pushMessage("Onda contida", 1800);
+    this.telemetry.record("wave-clear", state);
   }
 
   private createRuntimeGroups(wave: WaveDefinition): RuntimeWaveGroup[] {
@@ -192,10 +180,10 @@ export class WaveSystem implements GameSystem {
 
   private updateWaveSnapshot(): void {
     const state = this.registry.state;
-    const wave = waveDefinitions[state.wave.currentWaveIndex];
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
     const groups = state.wave.active
       ? this.activeGroups
-      : wave?.groups.map((group) => ({
+      : wave.groups.map((group) => ({
           enemyTypeId: group.enemyTypeId,
           remaining: group.count,
           total: group.count,

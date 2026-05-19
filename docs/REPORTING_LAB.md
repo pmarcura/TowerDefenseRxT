@@ -21,6 +21,7 @@ npm run lab:report -- --balance-runs 1200 --ai-bot greedy --ai-episodes 1000 --b
 - `reports/lab/latest.md`: resumo legível para issue, PR ou changelog.
 - `reports/lab/learning-dataset.jsonl`: dataset local para heurísticas de bot, regressão e análise IA opcional.
 - `reports/learning/champion-policy.json`: melhor política gerada pelo treino evolutivo.
+- `reports/ai/learning-dataset.jsonl`: tradução de partidas headless em amostras de aprendizado.
 
 Os relatórios gerados ficam ignorados pelo Git para evitar ruído, arquivos grandes e dados acidentais. A ferramenta que gera os relatórios é versionada.
 
