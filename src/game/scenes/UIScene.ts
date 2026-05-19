@@ -140,37 +140,9 @@ export class UIScene extends Phaser.Scene {
   }
 
   private drawWaveStartBanner(state: GameState): void {
-    if (
-      state.phase !== "playing" ||
-      state.wave.active ||
-      state.wave.completed ||
-      state.wave.nextWaveInMs <= 0
-    ) {
-      this.startBannerTitleText.setText("");
-      this.startBannerBodyText.setText("");
-      return;
-    }
-
-    const wave = getWaveDefinition(state.wave.currentWaveIndex);
-    const seconds = Math.ceil(state.wave.nextWaveInMs / 1000);
-    const urgent = state.wave.nextWaveInMs <= 5000;
-    const x = GAME_WIDTH / 2 - 176;
-    const y = 72;
-    const accent = wave.isBoss ? 0xff4f9a : urgent ? 0xffe39d : 0x83f3ff;
-    const pulse = urgent ? 0.72 + Math.sin(state.elapsedMs / 120) * 0.14 : 0.58;
-
-    this.graphics.fillStyle(0x020712, 0.88);
-    this.graphics.fillRoundedRect(x, y, 352, urgent ? 56 : 48, 9);
-    this.graphics.lineStyle(urgent ? 3 : 2, accent, pulse);
-    this.graphics.strokeRoundedRect(x, y, 352, urgent ? 56 : 48, 9);
-    this.graphics.fillStyle(accent, urgent ? 0.14 : 0.08);
-    this.graphics.fillRoundedRect(x + 4, y + 4, 344, urgent ? 48 : 40, 7);
-    this.startBannerTitleText.setPosition(GAME_WIDTH / 2, y + 8);
-    this.startBannerTitleText.setText(urgent ? `WAVE COMECA EM ${seconds}` : `PREPARACAO ${seconds}s`);
-    this.startBannerTitleText.setColor(urgent ? "#ffe39d" : "#83f3ff");
-    this.startBannerTitleText.setFontSize(urgent ? 22 : 18);
-    this.startBannerBodyText.setPosition(GAME_WIDTH / 2, y + (urgent ? 35 : 31));
-    this.startBannerBodyText.setText(`${wave.name} · R/Backspace acelera`);
+    void state;
+    this.startBannerTitleText.setText("");
+    this.startBannerBodyText.setText("");
   }
 
   private getWaveForecast(state: GameState) {

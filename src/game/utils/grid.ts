@@ -6,6 +6,11 @@ export const gridToWorld = (grid: GridPoint, map: MapDefinition = mapDefinition)
   y: map.origin.y + grid.row * map.tileSize + map.tileSize / 2
 });
 
+export const worldToGrid = (point: Vec2, map: MapDefinition = mapDefinition): GridPoint => ({
+  col: Math.floor((point.x - map.origin.x) / map.tileSize),
+  row: Math.floor((point.y - map.origin.y) / map.tileSize)
+});
+
 export const gridKey = (grid: GridPoint): string => `${grid.col}:${grid.row}`;
 
 export const isInsideGrid = (grid: GridPoint, map: MapDefinition = mapDefinition): boolean =>

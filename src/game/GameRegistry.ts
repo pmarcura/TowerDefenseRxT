@@ -16,6 +16,7 @@ import { getTowerDefinitionsForClass } from "./data/towers";
 import type {
   AudioCueId,
   GamePhase,
+  GameSessionMode,
   GameSettings,
   GameState,
   PlayerId,
@@ -64,9 +65,10 @@ const createInitialCursor = (selectedTowerIndex: number) => ({
   moveCooldownMs: 0
 });
 
-const createInitialState = (): GameState => ({
+const createInitialState = (sessionMode: GameSessionMode = "solo-ai"): GameState => ({
   phase: "menu",
   previousPhase: null,
+  sessionMode,
   debug: DEBUG_DEFAULT_ENABLED,
   settings: loadSettings(),
   runSummary: null,
@@ -154,6 +156,7 @@ const createInitialState = (): GameState => ({
 export class GameRegistry {
   private static instance: GameRegistry | null = null;
   private readonly listeners = new Set<() => void>();
+  private nextSessionMode: GameSessionMode = "solo-ai";
 
   state: GameState = createInitialState();
 
@@ -166,26 +169,41 @@ export class GameRegistry {
   }
 
   resetForMenu(): void {
-    this.state = createInitialState();
+    this.state = createInitialState(this.nextSessionMode);
     this.notifyChange();
   }
 
-  startRun(): void {
-    this.state = createInitialState();
+  setNextSessionMode(sessionMode: GameSessionMode): void {
+    this.nextSessionMode = sessionMode;
+    this.state.sessionMode = sessionMode;
+    this.notifyChange();
+  }
+
+  getNextSessionMode(): GameSessionMode {
+    return this.nextSessionMode;
+  }
+
+  startRun(sessionMode = this.nextSessionMode): void {
+    this.nextSessionMode = sessionMode;
+    this.state = createInitialState(sessionMode);
     this.state.phase = "class-selection";
+    const p1ClassIndex = 0;
+    const p2ClassIndex = this.getComplementaryClassIndex(p1ClassIndex);
     this.state.classSelection = {
       choices: {
         p1: {
-          selectedClassIndex: 0,
+          selectedClassIndex: p1ClassIndex,
           confirmed: false
         },
         p2: {
-          selectedClassIndex: 1,
-          confirmed: false
+          selectedClassIndex: p2ClassIndex,
+          confirmed: sessionMode === "solo-ai"
         }
       }
     };
-    runTelemetry.startRun(this.state, "local-human");
+    this.state.playerClasses.p1 = playerClassDefinitions[p1ClassIndex].id;
+    this.state.playerClasses.p2 = playerClassDefinitions[p2ClassIndex].id;
+    runTelemetry.startRun(this.state, sessionMode === "solo-ai" ? "local-ai" : "local-human");
     this.notifyChange();
   }
 
@@ -703,5 +721,9 @@ export class GameRegistry {
     if (notice.timerMs <= 0) {
       this.state.playerNotices[playerId] = null;
     }
+  }
+
+  private getComplementaryClassIndex(selectedClassIndex: number): number {
+    return (selectedClassIndex + 1) % playerClassDefinitions.length;
   }
 }

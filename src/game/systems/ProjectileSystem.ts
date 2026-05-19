@@ -60,7 +60,7 @@ export class ProjectileSystem implements GameSystem {
       : null;
     const ownerId = this.getProjectileOwner(projectile);
 
-    this.damageEnemy(target, projectile.damage, ownerId, projectile.towerId);
+    this.damageEnemy(target, projectile.damage, ownerId, projectile.towerId, projectile);
 
     if (projectile.effect === "slow") {
       target.slowMultiplier = tower.slowMultiplier ?? target.slowMultiplier;
@@ -86,7 +86,8 @@ export class ProjectileSystem implements GameSystem {
             enemy,
             projectile.damage * splashDamageMultiplier,
             ownerId,
-            projectile.towerId
+            projectile.towerId,
+            projectile
           );
         }
       }
@@ -103,6 +104,7 @@ export class ProjectileSystem implements GameSystem {
         chainRange,
         ownerId,
         projectile.towerId,
+        projectile,
         projectile.effect === "chain" ? 0.72 : branchEffects?.chainDamageMultiplier ?? 0
       );
     }
@@ -117,6 +119,7 @@ export class ProjectileSystem implements GameSystem {
     chainRange: number,
     ownerId: PlayerId,
     towerId: string,
+    projectile: ProjectileEntity,
     firstJumpMultiplier: number
   ): void {
     let currentTarget = firstTarget;
@@ -142,7 +145,7 @@ export class ProjectileSystem implements GameSystem {
         return;
       }
 
-      this.damageEnemy(nextTarget, damage, ownerId, towerId);
+      this.damageEnemy(nextTarget, damage, ownerId, towerId, projectile);
       visitedEnemyIds.add(nextTarget.id);
       currentTarget = nextTarget;
       damage *= 0.68;
@@ -153,28 +156,41 @@ export class ProjectileSystem implements GameSystem {
     enemy: EnemyEntity,
     rawDamage: number,
     ownerId: PlayerId,
-    towerId: string
+    towerId: string,
+    projectile?: ProjectileEntity
   ): void {
     if (!enemy.alive) {
       return;
     }
 
     const definition = getEnemyDefinition(enemy.typeId);
+    const sourceTower = this.registry.state.towers.find((candidate) => candidate.id === towerId);
+    const tower = getTowerDefinition(projectile?.typeId ?? sourceTower?.typeId ?? towerId);
     const armor = Math.max(0, definition.armor - enemy.armorReduction);
-    const finalDamage = Math.max(MINIMUM_DAMAGE, rawDamage - armor) * enemy.markMultiplier;
+    const isCritical = projectile ? this.rollCritical(projectile, enemy) : false;
+    const criticalMultiplier = isCritical ? projectile?.criticalMultiplier ?? 1.75 : 1;
+    const finalDamage = Math.max(MINIMUM_DAMAGE, rawDamage * criticalMultiplier - armor) * enemy.markMultiplier;
     const dealtDamage = Math.min(enemy.hp, finalDamage);
     const stats = this.registry.state.combatStats[ownerId];
 
     enemy.hp -= dealtDamage;
     enemy.damageSources[towerId] = (enemy.damageSources[towerId] ?? 0) + dealtDamage;
+    enemy.recentDamageTotal += dealtDamage;
+    enemy.recentDamageTimerMs = 900;
+    enemy.recentDamageColor = isCritical ? 0xfff0a6 : tower.color;
+    enemy.recentDamageWasCritical = enemy.recentDamageWasCritical || isCritical;
+    enemy.lastHitFlashMs = isCritical ? 180 : 110;
     stats.totalDamageDealt += dealtDamage;
     stats.waveDamageDealt += dealtDamage;
     this.addTowerDamage(towerId, dealtDamage);
-    this.registry.pushPresentationEvent("damage", 720, {
-      cueId: "hit",
+    this.registry.pushPresentationEvent(isCritical ? "critical" : "damage", isCritical ? 980 : 660, {
+      cueId: isCritical ? "crit" : "hit",
       position: { ...enemy.position },
       amount: dealtDamage,
-      color: definition.color
+      color: isCritical ? 0xfff0a6 : tower.color,
+      label: isCritical ? `CRIT ${Math.round(dealtDamage)}` : undefined,
+      sourcePlayerId: ownerId,
+      sourceTowerId: towerId
     });
 
     this.applyProjectileStatus(enemy, towerId);
@@ -186,12 +202,28 @@ export class ProjectileSystem implements GameSystem {
       this.grantTowerEliminationXp(enemy, towerId);
       const creditsGranted = this.economySystem.reward(ownerId, definition.reward);
       this.registry.pushPresentationEvent("kill", 900, {
-        cueId: "kill",
+        cueId: definition.traits.includes("boss") || definition.traits.includes("blindado") ? "kill_heavy" : "kill",
         position: { ...enemy.position },
         color: definition.glow,
-        label: `+${creditsGranted}`
+        label: `+${creditsGranted} CRED`
       });
     }
+  }
+
+  private rollCritical(projectile: ProjectileEntity, enemy: EnemyEntity): boolean {
+    if (projectile.damage <= 0 || projectile.criticalChance <= 0) {
+      return false;
+    }
+
+    const input = `${projectile.id}:${enemy.id}:${this.registry.state.elapsedMs}:${enemy.pathIndex}`;
+    let hash = 2166136261;
+
+    for (let index = 0; index < input.length; index += 1) {
+      hash ^= input.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return ((hash >>> 0) % 10_000) / 10_000 < projectile.criticalChance;
   }
 
   private applyProjectileStatus(enemy: EnemyEntity, towerId: string): void {

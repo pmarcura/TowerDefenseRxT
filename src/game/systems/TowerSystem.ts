@@ -106,6 +106,8 @@ export class TowerSystem implements GameSystem {
         levelBonuses.damageMultiplier *
         branchEffects.damageMultiplier *
         auraEffects.damageMultiplier,
+      criticalChance: Math.min(0.2, 0.05 + tower.level * 0.006 + tower.branchRanks.rupture * 0.015),
+      criticalMultiplier: 1.75 + tower.branchRanks.focus * 0.1,
       effect: definition.effect,
       alive: true
     });
@@ -130,9 +132,10 @@ export class TowerSystem implements GameSystem {
     const income = this.economySystem.rewardTeam(definition.incomePerTick ?? 1);
     tower.cooldownMs = definition.incomeIntervalMs ?? definition.cooldownMs;
     this.registry.pushPresentationEvent("income", 900, {
+      cueId: "income_tick",
       position: { ...tower.position },
       color: definition.glow,
-      label: `+${income} C`
+      label: `+${income} CRED`
     });
 
     return true;

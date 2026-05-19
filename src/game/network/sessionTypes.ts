@@ -1,6 +1,6 @@
-export type SessionMode = "local" | "online" | "ai-assisted";
+export type SessionMode = "solo-ai" | "local-coop" | "online-lobby-preview";
 
-export type PlayerSeatKind = "human-local" | "human-online" | "ai-partner" | "spectator";
+export type PlayerSeatKind = "human-local" | "human-online" | "ai-partner" | "empty" | "spectator";
 
 export type PlayerSeatId = `p${number}`;
 
@@ -28,7 +28,7 @@ export const createSessionSeats = (playerCount: number): PlayerSeat[] => {
 
   return Array.from({ length: count }, (_, index) => ({
     id: `p${index + 1}` as PlayerSeatId,
-    kind: index < 2 ? "human-local" : "ai-partner",
+    kind: index === 0 ? "human-local" : index === 1 ? "ai-partner" : "empty",
     displayName: `P${index + 1}`,
     classId: null,
     connected: index < 2,
@@ -40,7 +40,7 @@ export const createDefaultMultiplayerSession = (
   playerCount = 2,
   seed = 14729
 ): MultiplayerSessionConfig => ({
-  mode: "local",
+  mode: playerCount <= 2 ? "solo-ai" : "online-lobby-preview",
   minPlayers: 2,
   maxPlayers: 12,
   seed,

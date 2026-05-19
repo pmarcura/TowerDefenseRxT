@@ -105,6 +105,10 @@ export class AllySystem implements GameSystem {
     enemy.hp -= dealtDamage;
     enemy.damageSources[ally.sourceTowerId] =
       (enemy.damageSources[ally.sourceTowerId] ?? 0) + dealtDamage;
+    enemy.recentDamageTotal += dealtDamage;
+    enemy.recentDamageTimerMs = 900;
+    enemy.recentDamageColor = ally.color;
+    enemy.lastHitFlashMs = 110;
 
     if (tower) {
       tower.damageDealt += dealtDamage;
@@ -131,10 +135,10 @@ export class AllySystem implements GameSystem {
     }
     const creditsGranted = this.economySystem.reward(ally.ownerId, definition.reward);
     this.registry.pushPresentationEvent("kill", 900, {
-      cueId: "kill",
+      cueId: definition.traits.includes("boss") || definition.traits.includes("blindado") ? "kill_heavy" : "kill",
       position: { ...enemy.position },
       color: definition.glow,
-      label: `+${creditsGranted}`
+      label: `+${creditsGranted} CRED`
     });
   }
 

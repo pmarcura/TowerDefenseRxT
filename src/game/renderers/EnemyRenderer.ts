@@ -5,6 +5,7 @@ import type { EnemyEntity, GameState } from "../models/types";
 export class EnemyRenderer {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly sprites = new Map<string, Phaser.GameObjects.Image>();
+  private readonly damageLabels = new Map<string, Phaser.GameObjects.Text>();
 
   constructor(private readonly scene: Phaser.Scene) {
     this.graphics = scene.add.graphics();
@@ -26,15 +27,16 @@ export class EnemyRenderer {
 
     this.graphics.fillStyle(definition.glow, 0.16 * alpha);
     this.graphics.fillCircle(enemy.position.x, enemy.position.y, definition.radius + 14);
+    if (enemy.lastHitFlashMs > 0) {
+      const hitAlpha = Math.min(0.5, enemy.lastHitFlashMs / 180);
+      this.graphics.lineStyle(enemy.recentDamageWasCritical ? 3 : 2, enemy.recentDamageColor, hitAlpha);
+      this.graphics.strokeCircle(enemy.position.x, enemy.position.y, definition.radius + 18);
+    }
     this.drawTechFrame(enemy, alpha);
 
     if (this.scene.textures.exists(definition.assetKey)) {
-      this.graphics.fillStyle(0x02050a, 0.95 * alpha);
-      this.graphics.fillRect(enemy.position.x - 19, enemy.position.y - 33, 38, 6);
-      this.graphics.fillStyle(0x132231, 0.96 * alpha);
-      this.graphics.fillRect(enemy.position.x - 18, enemy.position.y - 32, 36, 4);
-      this.graphics.fillStyle(definition.color, 0.95 * alpha);
-      this.graphics.fillRect(enemy.position.x - 18, enemy.position.y - 32, 36 * hpRatio, 4);
+      this.drawHealthBar(enemy, hpRatio, alpha);
+      this.drawAccumulatedDamage(enemy, alpha);
 
       if (enemy.slowTimerMs > 0) {
         this.graphics.lineStyle(1, 0x9de8ff, 0.62 * alpha);
@@ -105,12 +107,8 @@ export class EnemyRenderer {
       );
     }
 
-    this.graphics.fillStyle(0x02050a, 0.95 * alpha);
-    this.graphics.fillRect(enemy.position.x - 19, enemy.position.y - 29, 38, 6);
-    this.graphics.fillStyle(0x132231, 0.96 * alpha);
-    this.graphics.fillRect(enemy.position.x - 18, enemy.position.y - 28, 36, 4);
-    this.graphics.fillStyle(definition.color, 0.95 * alpha);
-    this.graphics.fillRect(enemy.position.x - 18, enemy.position.y - 28, 36 * hpRatio, 4);
+    this.drawHealthBar(enemy, hpRatio, alpha);
+    this.drawAccumulatedDamage(enemy, alpha);
 
     if (enemy.slowTimerMs > 0) {
       this.graphics.lineStyle(1, 0x9de8ff, 0.62 * alpha);
@@ -155,6 +153,67 @@ export class EnemyRenderer {
     this.graphics.lineBetween(x + radius + 5, y, x + radius + 11, y);
   }
 
+  private drawHealthBar(enemy: EnemyEntity, hpRatio: number, alpha: number): void {
+    const definition = getEnemyDefinition(enemy.typeId);
+    const width = definition.traits.includes("boss") ? 78 : 46;
+    const height = definition.traits.includes("boss") ? 7 : 5;
+    const x = enemy.position.x - width / 2;
+    const y = enemy.position.y - definition.radius - (definition.traits.includes("boss") ? 24 : 18);
+    const hpColor = hpRatio > 0.6 ? 0x77ffc7 : hpRatio > 0.3 ? 0xffd36d : 0xff5d7f;
+
+    this.graphics.fillStyle(0x02050a, 0.96 * alpha);
+    this.graphics.fillRoundedRect(x - 2, y - 2, width + 4, height + 4, 3);
+    this.graphics.fillStyle(0x132231, 0.98 * alpha);
+    this.graphics.fillRoundedRect(x, y, width, height, 2);
+    this.graphics.fillStyle(hpColor, 0.98 * alpha);
+    this.graphics.fillRoundedRect(x, y, width * hpRatio, height, 2);
+
+    if (definition.traits.includes("boss")) {
+      this.graphics.lineStyle(1, definition.glow, 0.64 * alpha);
+      this.graphics.strokeRoundedRect(x - 2, y - 2, width + 4, height + 4, 3);
+    }
+  }
+
+  private drawAccumulatedDamage(enemy: EnemyEntity, alpha: number): void {
+    const label = this.getDamageLabel(enemy.id);
+
+    if (enemy.recentDamageTimerMs <= 0 || enemy.recentDamageTotal <= 0 || !enemy.alive) {
+      label.setVisible(false);
+      return;
+    }
+
+    const definition = getEnemyDefinition(enemy.typeId);
+    const ratio = Math.min(1, enemy.recentDamageTimerMs / 900);
+    const color = enemy.recentDamageWasCritical ? 0xfff0a6 : enemy.recentDamageColor;
+    const text = enemy.recentDamageWasCritical
+      ? `CRIT ${Math.round(enemy.recentDamageTotal)}`
+      : `${Math.round(enemy.recentDamageTotal)}`;
+
+    label.setVisible(true);
+    label.setText(text);
+    label.setPosition(enemy.position.x, enemy.position.y - definition.radius - 38);
+    label.setAlpha(Math.min(1, ratio * 1.25) * alpha);
+    label.setStyle({
+      fontFamily: "Inter, system-ui, sans-serif",
+      fontSize: enemy.recentDamageWasCritical ? "18px" : "14px",
+      fontStyle: "900",
+      color: `#${color.toString(16).padStart(6, "0")}`,
+      stroke: "#02050a",
+      strokeThickness: enemy.recentDamageWasCritical ? 5 : 4
+    });
+  }
+
+  private getDamageLabel(enemyId: string): Phaser.GameObjects.Text {
+    let label = this.damageLabels.get(enemyId);
+
+    if (!label) {
+      label = this.scene.add.text(0, 0, "", {}).setOrigin(0.5).setDepth(12);
+      this.damageLabels.set(enemyId, label);
+    }
+
+    return label;
+  }
+
   private syncSprites(state: GameState): void {
     const liveEnemyIds = new Set(state.enemies.map((enemy) => enemy.id));
 
@@ -162,6 +221,13 @@ export class EnemyRenderer {
       if (!liveEnemyIds.has(enemyId)) {
         sprite.destroy();
         this.sprites.delete(enemyId);
+      }
+    }
+
+    for (const [enemyId, label] of this.damageLabels) {
+      if (!liveEnemyIds.has(enemyId)) {
+        label.destroy();
+        this.damageLabels.delete(enemyId);
       }
     }
 

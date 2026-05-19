@@ -18,6 +18,13 @@ const playerPanels: Record<PlayerId, Rect> = {
   p2: { x: 672, y: 74, width: 570, height: 608 }
 };
 
+const soloRects = {
+  list: { x: 54, y: 128, width: 372, height: 498 },
+  hero: { x: 456, y: 128, width: 514, height: 498 },
+  partner: { x: 998, y: 128, width: 226, height: 498 },
+  confirm: { x: 456, y: 642, width: 312, height: 42 }
+} satisfies Record<string, Rect>;
+
 const playerLabels: Record<PlayerId, string> = {
   p1: "P1",
   p2: "P2"
@@ -48,6 +55,12 @@ export class ClassSelectionRenderer {
 
     this.drawBackdrop(state.elapsedMs);
     this.drawTitle();
+    if (state.sessionMode === "solo-ai") {
+      this.drawSoloSelection(state);
+      this.hideUnusedText();
+      return;
+    }
+
     this.drawPlayerPanel(state, "p1");
     this.drawPlayerPanel(state, "p2");
     this.hideUnusedText();
@@ -57,6 +70,26 @@ export class ClassSelectionRenderer {
     const state = this.registry.state;
 
     if (state.phase !== "class-selection" || !state.classSelection) {
+      return;
+    }
+
+    if (state.sessionMode === "solo-ai") {
+      const choice = state.classSelection.choices.p1;
+
+      if (!choice.confirmed && this.contains(soloRects.confirm, pointer.x, pointer.y)) {
+        this.classSelectionSystem.confirmClass("p1");
+        return;
+      }
+
+      for (let index = 0; index < playerClassDefinitions.length; index += 1) {
+        const bounds = this.getSoloClassCardBounds(index);
+
+        if (this.contains(bounds, pointer.x, pointer.y)) {
+          this.classSelectionSystem.selectClass("p1", playerClassDefinitions[index].id);
+          return;
+        }
+      }
+
       return;
     }
 
@@ -113,7 +146,9 @@ export class ClassSelectionRenderer {
     this.drawText(
       GAME_WIDTH / 2,
       39,
-      "Escolha duas tradições guardiãs",
+      this.registry.state.sessionMode === "solo-ai"
+        ? "Escolha sua tradição guardiã"
+        : "Escolha duas tradições guardiãs",
       26,
       "#edf7ff",
       "900",
@@ -122,12 +157,134 @@ export class ClassSelectionRenderer {
     this.drawText(
       GAME_WIDTH / 2,
       65,
-      "As formas são inspiradas em arquitetura, ritmo, geometria e ritos. Nada de figuras sagradas como armas.",
+      "Visual inspirado em arquitetura, ritmo, geometria e objetos culturais. Sem figuras sagradas como armas.",
       11,
       "#8ea4b3",
       "700",
       0.5
     );
+  }
+
+  private drawSoloSelection(state: GameState): void {
+    const selection = state.classSelection?.choices.p1;
+
+    if (!selection) {
+      return;
+    }
+
+    const selectedClass = playerClassDefinitions[selection.selectedClassIndex];
+    const partnerClass = getPlayerClassDefinitionSafe(state.playerClasses.p2);
+
+    this.drawSoloClassList(selection.selectedClassIndex, selection.confirmed);
+    this.drawSoloHero(selectedClass, selection.confirmed);
+    this.drawSoloPartner(partnerClass);
+    this.drawSoloConfirmButton(selectedClass, selection.confirmed);
+  }
+
+  private drawSoloClassList(selectedClassIndex: number, confirmed: boolean): void {
+    const rect = soloRects.list;
+
+    this.graphics.fillStyle(0x04101a, 0.92);
+    this.graphics.fillRoundedRect(rect.x, rect.y, rect.width, rect.height, 10);
+    this.graphics.lineStyle(1, 0x31556a, 0.48);
+    this.graphics.strokeRoundedRect(rect.x, rect.y, rect.width, rect.height, 10);
+    this.drawText(rect.x + 20, rect.y + 18, "TRADIÇÕES", 11, "#83f3ff", "900");
+    this.drawText(rect.x + 20, rect.y + 38, "A/D, Q/E ou clique", 10, "#8ea4b3", "800");
+
+    playerClassDefinitions.forEach((playerClass, index) => {
+      const bounds = this.getSoloClassCardBounds(index);
+      const selected = index === selectedClassIndex;
+      const alpha = confirmed && !selected ? 0.28 : selected ? 1 : 0.74;
+
+      this.graphics.fillStyle(selected ? 0x0b1b27 : 0x07131e, selected ? 0.95 : 0.68);
+      this.graphics.fillRoundedRect(bounds.x, bounds.y, bounds.width, bounds.height, 8);
+      this.graphics.lineStyle(selected ? 2 : 1, playerClass.accent, selected ? 0.86 : 0.26);
+      this.graphics.strokeRoundedRect(bounds.x, bounds.y, bounds.width, bounds.height, 8);
+      this.graphics.fillStyle(playerClass.accent, selected ? 0.2 : 0.08);
+      this.graphics.fillRoundedRect(bounds.x + 2, bounds.y + 2, 58, bounds.height - 4, 7);
+      this.drawClassMotif(playerClass, bounds.x + 31, bounds.y + bounds.height / 2, 0.5, alpha);
+      this.drawText(bounds.x + 76, bounds.y + 9, playerClass.shortName, 14, "#edf7ff", "900");
+      this.drawText(bounds.x + 76, bounds.y + 29, this.getSimpleClassTag(playerClass), 10, this.toHex(playerClass.secondaryAccent), "800", 0, 222);
+      this.drawText(bounds.x + bounds.width - 18, bounds.y + 17, `${index + 1}`, 11, selected ? this.toHex(playerClass.accent) : "#617583", "900", 1);
+    });
+  }
+
+  private drawSoloHero(playerClass: PlayerClassDefinition, confirmed: boolean): void {
+    const rect = soloRects.hero;
+    const towers = getTowerDefinitionsForClass(playerClass.id);
+    const accentHex = this.toHex(playerClass.accent);
+
+    this.graphics.fillStyle(0x04101a, 0.94);
+    this.graphics.fillRoundedRect(rect.x, rect.y, rect.width, rect.height, 10);
+    this.graphics.lineStyle(2, playerClass.accent, confirmed ? 0.78 : 0.48);
+    this.graphics.strokeRoundedRect(rect.x, rect.y, rect.width, rect.height, 10);
+    this.graphics.fillStyle(playerClass.accent, 0.1);
+    this.graphics.fillRoundedRect(rect.x + 2, rect.y + 2, rect.width - 4, 92, 8);
+
+    this.graphics.fillStyle(playerClass.accent, 0.14);
+    this.graphics.fillCircle(rect.x + 92, rect.y + 100, 62);
+    this.drawClassMotif(playerClass, rect.x + 92, rect.y + 100, 1.46, confirmed ? 1 : 0.78);
+
+    this.drawText(rect.x + 178, rect.y + 28, playerClass.shortName.toUpperCase(), 12, accentHex, "900");
+    this.drawText(rect.x + 178, rect.y + 52, playerClass.name, 27, "#edf7ff", "900", 0, 300);
+    this.drawText(rect.x + 178, rect.y + 96, playerClass.description, 13, "#b9c9d8", "700", 0, 292);
+
+    this.drawSoloStat(rect.x + 34, rect.y + 188, "FUNÇÃO", playerClass.specialty);
+    this.drawSoloStat(rect.x + 196, rect.y + 188, "PASSIVA", playerClass.passive);
+    this.drawSoloStat(rect.x + 34, rect.y + 252, "TORRES", towers.map((tower) => tower.shortName).join(", "));
+
+    this.drawText(rect.x + 34, rect.y + 330, "COMO JOGA", 11, accentHex, "900");
+    this.drawText(rect.x + 34, rect.y + 354, this.getBeginnerAdvice(playerClass), 14, "#edf7ff", "800", 0, rect.width - 68);
+    this.drawText(rect.x + 34, rect.y + 434, playerClass.note, 10, "#6f8492", "700", 0, rect.width - 68);
+  }
+
+  private drawSoloPartner(playerClass: PlayerClassDefinition): void {
+    const rect = soloRects.partner;
+
+    this.graphics.fillStyle(0x04101a, 0.86);
+    this.graphics.fillRoundedRect(rect.x, rect.y, rect.width, rect.height, 10);
+    this.graphics.lineStyle(1, 0xffd36d, 0.42);
+    this.graphics.strokeRoundedRect(rect.x, rect.y, rect.width, rect.height, 10);
+    this.drawText(rect.x + 18, rect.y + 18, "PARCEIRO IA", 11, "#ffd36d", "900");
+    this.drawText(rect.x + 18, rect.y + 42, "invisível na partida", 10, "#8ea4b3", "800");
+
+    this.graphics.fillStyle(playerClass.accent, 0.13);
+    this.graphics.fillCircle(rect.x + rect.width / 2, rect.y + 126, 54);
+    this.drawClassMotif(playerClass, rect.x + rect.width / 2, rect.y + 126, 1.15, 0.84);
+    this.drawText(rect.x + 18, rect.y + 204, playerClass.shortName, 19, "#edf7ff", "900", 0, rect.width - 36);
+    this.drawText(rect.x + 18, rect.y + 238, playerClass.specialty, 12, this.toHex(playerClass.secondaryAccent), "900", 0, rect.width - 36);
+    this.drawText(
+      rect.x + 18,
+      rect.y + 286,
+      "A IA usa a política aprendida, constrói por P2, dá pronto e registra a partida para melhorar o laboratório.",
+      12,
+      "#b9c9d8",
+      "700",
+      0,
+      rect.width - 36
+    );
+  }
+
+  private drawSoloConfirmButton(
+    playerClass: PlayerClassDefinition,
+    confirmed: boolean
+  ): void {
+    const rect = soloRects.confirm;
+
+    this.graphics.fillStyle(confirmed ? playerClass.accent : 0x07131e, confirmed ? 0.24 : 0.92);
+    this.graphics.fillRoundedRect(rect.x, rect.y, rect.width, rect.height, 8);
+    this.graphics.lineStyle(2, playerClass.accent, confirmed ? 0.82 : 0.54);
+    this.graphics.strokeRoundedRect(rect.x, rect.y, rect.width, rect.height, 8);
+    this.drawText(
+      rect.x + rect.width / 2,
+      rect.y + 12,
+      confirmed ? "PRONTO" : `COMEÇAR COM ${playerClass.shortName.toUpperCase()}`,
+      14,
+      confirmed ? "#b4ff72" : "#edf7ff",
+      "900",
+      0.5
+    );
+    this.drawText(rect.x + rect.width + 18, rect.y + 14, "SPACE ou clique", 11, "#8ea4b3", "800");
   }
 
   private drawPlayerPanel(state: GameState, playerId: PlayerId): void {
@@ -391,6 +548,17 @@ export class ClassSelectionRenderer {
     };
   }
 
+  private getSoloClassCardBounds(index: number): Rect {
+    const rect = soloRects.list;
+
+    return {
+      x: rect.x + 18,
+      y: rect.y + 78 + index * 58,
+      width: rect.width - 36,
+      height: 48
+    };
+  }
+
   private getConfirmBounds(playerId: PlayerId): Rect {
     const panel = playerPanels[playerId];
 
@@ -484,4 +652,55 @@ export class ClassSelectionRenderer {
 
     return percent > 0 ? `+${percent}%` : `${percent}%`;
   }
+
+  private drawSoloStat(
+    x: number,
+    y: number,
+    label: string,
+    value: string
+  ): void {
+    const width = label === "TORRES" ? 446 : label === "PASSIVA" ? 284 : 142;
+
+    this.graphics.fillStyle(0x07131e, 0.68);
+    this.graphics.fillRoundedRect(x, y, width, 46, 7);
+    this.graphics.lineStyle(1, 0x31556a, 0.28);
+    this.graphics.strokeRoundedRect(x, y, width, 46, 7);
+    this.drawText(x + 12, y + 8, label, 9, "#8ea4b3", "900");
+    this.drawText(x + 12, y + 24, value, 10, "#edf7ff", "850", 0, width - 24);
+  }
+
+  private getSimpleClassTag(playerClass: PlayerClassDefinition): string {
+    if (playerClass.rewardMultiplier > 1.05 || playerClass.costMultiplier < 0.96) {
+      return "economia e crescimento";
+    }
+
+    if (playerClass.damageMultiplier > 1.04) {
+      return "dano alto";
+    }
+
+    if (playerClass.rangeBonus >= 8) {
+      return "alcance e controle";
+    }
+
+    return playerClass.visualMotif;
+  }
+
+  private getBeginnerAdvice(playerClass: PlayerClassDefinition): string {
+    if (playerClass.rewardMultiplier > 1.05 || playerClass.costMultiplier < 0.96) {
+      return "Abra com uma torre de renda se a rota estiver segura. Depois use o dinheiro extra para cobrir curvas e boss.";
+    }
+
+    if (playerClass.damageMultiplier > 1.04) {
+      return "Gaste cedo em torres de ataque. Posicione perto do fim da rota para repetir dano no mesmo inimigo.";
+    }
+
+    if (playerClass.rangeBonus >= 8) {
+      return "Priorize posições que enxergam duas partes da rota. Alcance alto vale mais quando cobre curvas.";
+    }
+
+    return "Comece com dano simples, depois misture controle e área. Evite juntar tudo em um ponto só.";
+  }
 }
+
+const getPlayerClassDefinitionSafe = (classId: string): PlayerClassDefinition =>
+  playerClassDefinitions.find((definition) => definition.id === classId) ?? playerClassDefinitions[0];

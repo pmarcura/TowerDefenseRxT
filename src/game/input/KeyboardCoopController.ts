@@ -6,6 +6,7 @@ import type { GridPoint, PlayerId } from "../models/types";
 import type { BuildSystem } from "../systems/BuildSystem";
 import type { ClassSelectionSystem } from "../systems/ClassSelectionSystem";
 import type { SkillTreeSystem } from "../systems/SkillTreeSystem";
+import { isInsideGrid, worldToGrid } from "../utils/grid";
 
 type PlayerKeys = {
   up: Phaser.Input.Keyboard.Key;
@@ -87,6 +88,8 @@ export class KeyboardCoopController {
       keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC),
       keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P)
     ];
+
+    this.scene.input.on("pointerdown", this.handlePointerDown, this);
   }
 
   update(): void {
@@ -129,7 +132,10 @@ export class KeyboardCoopController {
     }
 
     this.updatePlayer("p1", this.p1Keys);
-    this.updatePlayer("p2", this.p2Keys);
+
+    if (this.registry.state.sessionMode !== "solo-ai") {
+      this.updatePlayer("p2", this.p2Keys);
+    }
   }
 
   private updateRewardSelection(): void {
@@ -139,7 +145,10 @@ export class KeyboardCoopController {
       selected = this.skillTreeSystem.selectHighlightedReward("p1") || selected;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.p2Keys.buySkill)) {
+    if (
+      this.registry.state.sessionMode !== "solo-ai" &&
+      Phaser.Input.Keyboard.JustDown(this.p2Keys.buySkill)
+    ) {
       selected = this.skillTreeSystem.selectHighlightedReward("p2") || selected;
     }
 
@@ -169,7 +178,10 @@ export class KeyboardCoopController {
 
   private updateClassSelection(): void {
     this.updatePlayerClassSelection("p1", this.p1Keys);
-    this.updatePlayerClassSelection("p2", this.p2Keys);
+
+    if (this.registry.state.sessionMode !== "solo-ai") {
+      this.updatePlayerClassSelection("p2", this.p2Keys);
+    }
   }
 
   private updatePlayerClassSelection(playerId: PlayerId, keys: PlayerKeys): void {
@@ -285,6 +297,37 @@ export class KeyboardCoopController {
         this.buildSystem.selectTower(playerId, index);
       }
     });
+  }
+
+  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    const state = this.registry.state;
+
+    if (state.phase !== "playing" || state.towerInspection) {
+      return;
+    }
+
+    const grid = worldToGrid({ x: pointer.x, y: pointer.y }, state.activeMap);
+
+    if (!isInsideGrid(grid, state.activeMap)) {
+      return;
+    }
+
+    state.cursors.p1.grid = grid;
+
+    const tower = state.towers.find(
+      (candidate) => candidate.grid.col === grid.col && candidate.grid.row === grid.row
+    );
+
+    if (tower) {
+      if (tower.ownerId === "p1") {
+        this.registry.openTowerInspection("p1");
+      } else {
+        this.registry.pushPlayerNotice("p1", "TORRE DA IA", "espaco ocupado por P2", "info", 1300);
+      }
+      return;
+    }
+
+    this.buildSystem.tryBuildForPlayer("p1");
   }
 
   private getDirection(keys: PlayerKeys): GridPoint {

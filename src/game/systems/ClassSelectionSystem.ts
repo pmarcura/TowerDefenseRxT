@@ -26,6 +26,7 @@ export class ClassSelectionSystem implements GameSystem {
 
     playerChoice.selectedClassIndex = classIndex;
     state.playerClasses[playerId] = playerClassDefinitions[classIndex].id;
+    this.syncSoloPartnerClass(playerId, classIndex);
     this.registry.notifyChange();
 
     return true;
@@ -49,6 +50,7 @@ export class ClassSelectionSystem implements GameSystem {
     const nextIndex = (playerChoice.selectedClassIndex + direction + total) % total;
     playerChoice.selectedClassIndex = nextIndex;
     state.playerClasses[playerId] = playerClassDefinitions[nextIndex].id;
+    this.syncSoloPartnerClass(playerId, nextIndex);
     this.registry.notifyChange();
 
     return true;
@@ -111,5 +113,18 @@ export class ClassSelectionSystem implements GameSystem {
       cueId: "wave_start",
       label: "Run sincronizada"
     });
+  }
+
+  private syncSoloPartnerClass(playerId: PlayerId, selectedClassIndex: number): void {
+    const state = this.registry.state;
+
+    if (state.sessionMode !== "solo-ai" || playerId !== "p1" || !state.classSelection) {
+      return;
+    }
+
+    const partnerIndex = (selectedClassIndex + 1) % playerClassDefinitions.length;
+    state.classSelection.choices.p2.selectedClassIndex = partnerIndex;
+    state.classSelection.choices.p2.confirmed = true;
+    state.playerClasses.p2 = playerClassDefinitions[partnerIndex].id;
   }
 }

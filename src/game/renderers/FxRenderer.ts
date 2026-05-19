@@ -44,22 +44,31 @@ export class FxRenderer {
     }
 
     if (event.kind === "damage") {
-      this.drawLabel(event, `${Math.round(event.amount ?? 0)}`, color, alpha, -18 - progress * 24);
-      this.graphics.fillStyle(color, 0.14 * alpha);
+      this.drawLabel(event, `${Math.round(event.amount ?? 0)}`, color, alpha, -20 - progress * 22);
+      this.graphics.fillStyle(color, 0.1 * alpha);
       this.graphics.fillCircle(event.position.x, event.position.y, 10 + progress * 10);
       return;
     }
 
+    if (event.kind === "critical") {
+      this.drawLabel(event, event.label ?? `CRIT ${Math.round(event.amount ?? 0)}`, 0xfff0a6, alpha, -34 - progress * 34);
+      this.graphics.lineStyle(3, 0xfff0a6, 0.72 * alpha);
+      this.graphics.strokeCircle(event.position.x, event.position.y, 15 + progress * 22);
+      this.graphics.fillStyle(0xfff0a6, 0.16 * alpha);
+      this.graphics.fillCircle(event.position.x, event.position.y, 16 + progress * 12);
+      return;
+    }
+
     if (event.kind === "kill") {
-      this.drawLabel(event, event.label ?? "KO", color, alpha, -26 - progress * 30);
+      this.drawLabel(event, event.label ?? "KO", color, alpha, -28 - progress * 32);
       this.graphics.lineStyle(2, color, 0.7 * alpha);
       this.graphics.strokeCircle(event.position.x, event.position.y, 18 + progress * 18);
       return;
     }
 
     if (event.kind === "income") {
-      this.drawLabel(event, event.label ?? "+C", color, alpha, -30 - progress * 20);
-      this.graphics.fillStyle(0xffe39d, 0.12 * alpha);
+      this.drawLabel(event, event.label ?? "+CRED", 0xffe39d, alpha, -32 - progress * 22);
+      this.graphics.fillStyle(0xffe39d, 0.16 * alpha);
       this.graphics.fillCircle(event.position.x, event.position.y, 18 + progress * 12);
       this.graphics.lineStyle(2, 0xffe39d, 0.52 * alpha);
       this.graphics.strokeCircle(event.position.x, event.position.y, 22 + progress * 16);
@@ -90,19 +99,55 @@ export class FxRenderer {
       label = this.scene.add
         .text(event.position?.x ?? 0, event.position?.y ?? 0, text, {
           fontFamily: "Inter, system-ui, sans-serif",
-          fontSize: event.kind === "damage" ? "13px" : "11px",
+          fontSize: `${this.getFontSize(event)}px`,
           fontStyle: "800",
           color: `#${color.toString(16).padStart(6, "0")}`,
           stroke: "#02050a",
-          strokeThickness: 3
+          strokeThickness: this.getStrokeThickness(event)
         })
         .setOrigin(0.5);
       label.setDepth(21);
       this.labels.set(event.id, label);
     }
 
+    label.setStyle({
+      fontFamily: "Inter, system-ui, sans-serif",
+      fontSize: `${this.getFontSize(event)}px`,
+      fontStyle: "900",
+      color: `#${color.toString(16).padStart(6, "0")}`,
+      stroke: "#02050a",
+      strokeThickness: this.getStrokeThickness(event)
+    });
     label.setText(text);
     label.setPosition(event.position?.x ?? 0, (event.position?.y ?? 0) + yOffset);
     label.setAlpha(alpha);
+  }
+
+  private getFontSize(event: PresentationEvent): number {
+    if (event.kind === "critical") {
+      return 24;
+    }
+
+    if (event.kind === "kill" || event.kind === "income") {
+      return 16;
+    }
+
+    if (event.kind === "damage") {
+      return 14;
+    }
+
+    return 12;
+  }
+
+  private getStrokeThickness(event: PresentationEvent): number {
+    if (event.kind === "critical") {
+      return 6;
+    }
+
+    if (event.kind === "kill" || event.kind === "income") {
+      return 5;
+    }
+
+    return 4;
   }
 }

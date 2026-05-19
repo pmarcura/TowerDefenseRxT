@@ -12,6 +12,7 @@ import { ProjectileRenderer } from "../renderers/ProjectileRenderer";
 import { TowerRenderer } from "../renderers/TowerRenderer";
 import { ZoneRenderer } from "../renderers/ZoneRenderer";
 import { AllySystem } from "../systems/AllySystem";
+import { AiPartnerSystem } from "../systems/AiPartnerSystem";
 import { BuildSystem } from "../systems/BuildSystem";
 import { AudioSystem } from "../systems/AudioSystem";
 import { ClassSelectionSystem } from "../systems/ClassSelectionSystem";
@@ -23,6 +24,7 @@ import { SkillTreeSystem } from "../systems/SkillTreeSystem";
 import { StatusEffectSystem } from "../systems/StatusEffectSystem";
 import { TowerSystem } from "../systems/TowerSystem";
 import { WaveSystem } from "../systems/WaveSystem";
+import type { GameSessionMode } from "../models/types";
 
 export class GameScene extends Phaser.Scene {
   private readonly gameRegistry = GameRegistry.getInstance();
@@ -30,6 +32,7 @@ export class GameScene extends Phaser.Scene {
   private keyboardController!: KeyboardCoopController;
   private classSelectionSystem!: ClassSelectionSystem;
   private skillTreeSystem!: SkillTreeSystem;
+  private aiPartnerSystem!: AiPartnerSystem;
   private ambientRenderer!: AmbientParticleRenderer;
   private classSelectionRenderer!: ClassSelectionRenderer;
   private gridRenderer!: GridRenderer;
@@ -44,6 +47,12 @@ export class GameScene extends Phaser.Scene {
 
   constructor() {
     super("GameScene");
+  }
+
+  init(data?: { sessionMode?: GameSessionMode }): void {
+    if (data?.sessionMode) {
+      this.gameRegistry.setNextSessionMode(data.sessionMode);
+    }
   }
 
   create(): void {
@@ -61,6 +70,7 @@ export class GameScene extends Phaser.Scene {
     state.elapsedMs += delta;
     this.ambientRenderer.update(delta);
     this.keyboardController.update();
+    this.aiPartnerSystem.update(delta);
     this.audioSystem.update(delta);
 
     if (state.phase === "playing") {
@@ -103,6 +113,7 @@ export class GameScene extends Phaser.Scene {
       allySystem
     );
     const buildSystem = new BuildSystem(this.gameRegistry, economySystem, skillTreeSystem);
+    this.aiPartnerSystem = new AiPartnerSystem(this.gameRegistry, buildSystem, skillTreeSystem);
     const waveSystem = new WaveSystem(
       this.gameRegistry,
       enemySystem,

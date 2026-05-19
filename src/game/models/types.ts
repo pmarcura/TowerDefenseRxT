@@ -1,5 +1,7 @@
 export type PlayerId = "p1" | "p2";
 
+export type GameSessionMode = "solo-ai" | "local-coop" | "online-lobby-preview";
+
 export type GridPoint = {
   readonly col: number;
   readonly row: number;
@@ -297,6 +299,11 @@ export type EnemyEntity = {
   slowMultiplier: number;
   slowTimerMs: number;
   reachedBaseTimerMs: number;
+  recentDamageTotal: number;
+  recentDamageTimerMs: number;
+  recentDamageColor: number;
+  recentDamageWasCritical: boolean;
+  lastHitFlashMs: number;
   alive: boolean;
 };
 
@@ -362,6 +369,8 @@ export type ProjectileEntity = {
   position: Vec2;
   speed: number;
   damage: number;
+  criticalChance: number;
+  criticalMultiplier: number;
   effect: TowerEffect;
   alive: boolean;
 };
@@ -401,7 +410,10 @@ export type AudioCueId =
   | "build"
   | "tower_fire"
   | "hit"
+  | "crit"
   | "kill"
+  | "kill_heavy"
+  | "income_tick"
   | "wave_start"
   | "boss"
   | "reward"
@@ -412,7 +424,9 @@ export type AudioCueId =
 export type PresentationEventKind =
   | "audio"
   | "damage"
+  | "critical"
   | "kill"
+  | "combo"
   | "income"
   | "build"
   | "level-up"
@@ -429,6 +443,8 @@ export type PresentationEvent = {
   amount?: number;
   color?: number;
   label?: string;
+  sourcePlayerId?: PlayerId;
+  sourceTowerId?: string;
 };
 
 export type RoundNoticeTone = "start" | "complete" | "boss" | "danger";
@@ -481,6 +497,7 @@ export type HudMessage = {
 export type GameState = {
   phase: GamePhase;
   previousPhase: GamePhase | null;
+  sessionMode: GameSessionMode;
   debug: boolean;
   settings: GameSettings;
   runSummary: RunStats | null;

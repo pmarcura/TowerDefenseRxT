@@ -20,7 +20,7 @@ const panelByPlayer: Record<PlayerId, { x: number; y: number; align: "left" | "r
 };
 
 const controlsByPlayer: Record<PlayerId, string[]> = {
-  p1: ["WASD mover", "SPACE construir", "F torre", "R pronto", "Q/E troca"],
+  p1: ["WASD mover", "MOUSE/SPACE construir", "F torre", "R pronto", "Q/E troca"],
   p2: ["SETAS mover", "ENTER construir", "SHIFT torre", "BACK pronto", "PG troca"]
 };
 
@@ -46,9 +46,15 @@ export class PhaserHudRenderer {
     }
 
     this.drawTimeline(state);
+    this.drawCountdownCallout(state);
     this.drawDebugButton(state);
     this.drawPlayerPanel(state, "p1");
-    this.drawPlayerPanel(state, "p2");
+
+    if (state.sessionMode === "solo-ai") {
+      this.drawAiCompanionChip(state);
+    } else {
+      this.drawPlayerPanel(state, "p2");
+    }
     this.hideUnusedText();
   }
 
@@ -159,6 +165,63 @@ export class PhaserHudRenderer {
     this.drawTowerBelt(state, playerId, x + 12, y + 226, width - 24);
     this.drawPlayerMetrics(state, playerId, x + 12, y + 276, width - 24);
     this.drawControls(playerId, x + 12, y + 308, width - 24);
+  }
+
+  private drawAiCompanionChip(state: GameState): void {
+    const playerClass = getPlayerClassDefinition(state.playerClasses.p2);
+    const x = GAME_WIDTH - 246;
+    const y = 86;
+    const width = 232;
+    const height = 92;
+    const towers = state.towers.filter((tower) => tower.ownerId === "p2").length;
+
+    this.graphics.fillStyle(gameDesign.color.ink, 0.74);
+    this.graphics.fillRoundedRect(x, y, width, height, gameDesign.radius.panel);
+    this.graphics.lineStyle(1, playerClass.accent, 0.42);
+    this.graphics.strokeRoundedRect(x, y, width, height, gameDesign.radius.panel);
+    this.graphics.fillStyle(playerClass.accent, 0.1);
+    this.graphics.fillRoundedRect(x + 2, y + 2, width - 4, 34, gameDesign.radius.lg);
+    this.drawText(x + 14, y + 10, "IA GUARDIÃ", 10, "#ffd36d", "900");
+    this.drawText(x + width - 14, y + 10, `${state.economies.p2.credits} CRED`, 10, "#ffe39d", "900", 1);
+    this.drawText(x + 14, y + 44, playerClass.shortName, 15, "#edf7ff", "900", 0, width - 28);
+    this.drawText(
+      x + 14,
+      y + 68,
+      `P2 invisível · ${towers} torres · pronto automático`,
+      9,
+      "#8ea4b3",
+      "900",
+      0,
+      width - 28
+    );
+  }
+
+  private drawCountdownCallout(state: GameState): void {
+    if (state.phase !== "playing" || state.wave.active || state.wave.completed) {
+      return;
+    }
+
+    const seconds = Math.max(0, state.wave.nextWaveInMs / 1000);
+    const wave = getWaveDefinition(state.wave.currentWaveIndex);
+    const x = GAME_WIDTH / 2 - 182;
+    const y = 70;
+    const width = 364;
+    const height = 54;
+    const color = wave.isBoss ? gameDesign.color.pink : gameDesign.color.cyan;
+
+    this.graphics.fillStyle(0x020712, 0.82);
+    this.graphics.fillRoundedRect(x, y, width, height, 9);
+    this.graphics.lineStyle(2, color, wave.isBoss ? 0.72 : 0.48);
+    this.graphics.strokeRoundedRect(x, y, width, height, 9);
+    this.graphics.fillStyle(color, 0.1);
+    this.graphics.fillRoundedRect(x + 2, y + 2, width - 4, height - 4, 8);
+
+    const title = state.wave.readyPlayers.p1 && (state.sessionMode === "solo-ai" || state.wave.readyPlayers.p2)
+      ? "COMEÇANDO"
+      : "PREPARAÇÃO";
+    this.drawText(x + 18, y + 9, title, 11, this.toHex(color), "900");
+    this.drawText(x + 18, y + 27, wave.name, 12, "#edf7ff", "900", 0, 205);
+    this.drawText(x + width - 20, y + 5, `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`, 30, "#edf7ff", "900", 1);
   }
 
   private drawDebugButton(state: GameState): void {
@@ -366,10 +429,12 @@ export class PhaserHudRenderer {
 
     const missing = [
       state.wave.readyPlayers.p1 ? null : "P1",
-      state.wave.readyPlayers.p2 ? null : "P2"
+      state.sessionMode === "solo-ai" || state.wave.readyPlayers.p2 ? null : "P2"
     ].filter(Boolean);
 
-    return `AUTO ${(state.wave.nextWaveInMs / 1000).toFixed(0)}S · FALTA ${missing.join("+")}`;
+    return missing.length > 0
+      ? `AUTO ${(state.wave.nextWaveInMs / 1000).toFixed(0)}S · FALTA ${missing.join("+")}`
+      : `AUTO ${(state.wave.nextWaveInMs / 1000).toFixed(0)}S`;
   }
 
   private getNoticeColor(tone: string): number {

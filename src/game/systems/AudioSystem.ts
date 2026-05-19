@@ -9,7 +9,10 @@ const cueGapMs: Record<AudioCueId, number> = {
   build: 80,
   tower_fire: 60,
   hit: 45,
+  crit: 95,
   kill: 90,
+  kill_heavy: 160,
+  income_tick: 100,
   wave_start: 400,
   boss: 500,
   reward: 250,
@@ -94,8 +97,26 @@ export class AudioSystem implements GameSystem {
       return;
     }
 
+    if (cueId === "crit") {
+      this.tone(context, 132, 0.055, volume * 0.13, "sawtooth");
+      window.setTimeout(() => this.tone(context, 880, 0.085, volume * 0.12, "triangle"), 22);
+      window.setTimeout(() => this.tone(context, 1320, 0.055, volume * 0.08, "sine"), 58);
+      return;
+    }
+
     if (cueId === "kill") {
-      this.chord(context, [440, 660], 0.09, volume * 0.1);
+      this.chord(context, [220, 440, 660], 0.11, volume * 0.11);
+      return;
+    }
+
+    if (cueId === "kill_heavy") {
+      this.chord(context, [110, 220, 330, 660], 0.18, volume * 0.16);
+      window.setTimeout(() => this.tone(context, 990, 0.09, volume * 0.09, "triangle"), 72);
+      return;
+    }
+
+    if (cueId === "income_tick") {
+      this.chord(context, [660, 990], 0.07, volume * 0.07);
       return;
     }
 

@@ -32,6 +32,11 @@ export class EnemySystem implements GameSystem {
       slowMultiplier: 1,
       slowTimerMs: 0,
       reachedBaseTimerMs: 0,
+      recentDamageTotal: 0,
+      recentDamageTimerMs: 0,
+      recentDamageColor: definition.color,
+      recentDamageWasCritical: false,
+      lastHitFlashMs: 0,
       alive: true
     };
 
@@ -51,6 +56,7 @@ export class EnemySystem implements GameSystem {
         continue;
       }
 
+      this.updateDamageFeedback(enemy, deltaMs);
       this.updateSlow(enemy, deltaMs);
       this.moveEnemy(enemy, deltaMs);
     }
@@ -67,6 +73,23 @@ export class EnemySystem implements GameSystem {
     }
 
     enemy.slowTimerMs = Math.max(0, enemy.slowTimerMs - deltaMs);
+  }
+
+  private updateDamageFeedback(enemy: EnemyEntity, deltaMs: number): void {
+    enemy.lastHitFlashMs = Math.max(0, enemy.lastHitFlashMs - deltaMs);
+
+    if (enemy.recentDamageTimerMs <= 0) {
+      enemy.recentDamageTotal = 0;
+      enemy.recentDamageWasCritical = false;
+      return;
+    }
+
+    enemy.recentDamageTimerMs = Math.max(0, enemy.recentDamageTimerMs - deltaMs);
+
+    if (enemy.recentDamageTimerMs <= 0) {
+      enemy.recentDamageTotal = 0;
+      enemy.recentDamageWasCritical = false;
+    }
   }
 
   private moveEnemy(enemy: EnemyEntity, deltaMs: number): void {
