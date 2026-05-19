@@ -9,7 +9,8 @@ export type BotId =
   | "economy"
   | "defense"
   | "bosskiller"
-  | "bughunter";
+  | "bughunter"
+  | "pro";
 
 export type BotContext = {
   readonly controlledPlayers: readonly PlayerId[];

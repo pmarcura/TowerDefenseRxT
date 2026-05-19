@@ -6,6 +6,7 @@ import { getHeadlessBot, type BotId } from "../bots";
 import { Rng } from "../env/Rng";
 import { TowerDefenseEnv } from "../env/TowerDefenseEnv";
 import type { HeadlessGameState } from "../env/types";
+import { choosePolicyAction, type LearningPolicy } from "../learning/policy";
 import { ReplayRecorder, type ReplayRecord } from "../replay/ReplayRecorder";
 
 export type AiSimulationOptions = {
@@ -15,6 +16,7 @@ export type AiSimulationOptions = {
   maxSteps?: number;
   debug?: boolean;
   players?: Partial<Record<PlayerId, string>>;
+  policy?: LearningPolicy;
 };
 
 export type AiEpisodeSummary = {
@@ -84,7 +86,8 @@ export const runAiSimulation = (
   const episodes = Math.max(1, Math.floor(options.episodes ?? 1000));
   const seed = options.seed ?? 14729;
   const maxSteps = Math.max(20, Math.floor(options.maxSteps ?? 260));
-  const bot = getHeadlessBot(options.bot ?? "random");
+  const bot = options.policy ? null : getHeadlessBot(options.bot ?? "random");
+  const botId = options.policy?.id ?? bot?.id ?? "random";
   const classPairs: Record<string, MutableClassPairStats> = {};
   const towerUsage = createTowerUsage();
   const episodesSummary: AiEpisodeSummary[] = [];
@@ -109,14 +112,14 @@ export const runAiSimulation = (
       } satisfies Partial<Record<PlayerId, string>>);
     const initialState = env.reset({
       seed: episodeSeed,
-      debug: options.debug ?? bot.id === "bughunter",
+      debug: options.debug ?? botId === "bughunter",
       players
     });
     const recorder = new ReplayRecorder(
       episodeSeed,
       initialState.mapId,
       initialState.version,
-      bot.id,
+      botId,
       initialState
     );
     let lastState: HeadlessGameState = initialState;
@@ -125,10 +128,12 @@ export const runAiSimulation = (
 
     try {
       for (; steps < maxSteps; steps += 1) {
-        const action = bot.chooseAction(lastState, {
-          controlledPlayers: playerIds,
-          rng
-        });
+        const action = options.policy
+          ? choosePolicyAction(options.policy, lastState, playerIds, rng)
+          : bot?.chooseAction(lastState, {
+              controlledPlayers: playerIds,
+              rng
+            }) ?? { type: "WAIT", deltaMs: 1000 };
         const result = env.step(action);
 
         recorder.record(
@@ -208,7 +213,7 @@ export const runAiSimulation = (
   const report: AiSimulationReport = {
     version: REPORT_VERSION,
     generatedAt: new Date().toISOString(),
-    bot: bot.id,
+    bot: botId,
     episodes,
     seed,
     maxSteps,

@@ -20,6 +20,7 @@ npm run lab:report -- --balance-runs 1200 --ai-bot greedy --ai-episodes 1000 --b
 - `reports/lab/latest.json`: relatório completo serializado.
 - `reports/lab/latest.md`: resumo legível para issue, PR ou changelog.
 - `reports/lab/learning-dataset.jsonl`: dataset local para heurísticas de bot, regressão e análise IA opcional.
+- `reports/learning/champion-policy.json`: melhor política gerada pelo treino evolutivo.
 
 Os relatórios gerados ficam ignorados pelo Git para evitar ruído, arquivos grandes e dados acidentais. A ferramenta que gera os relatórios é versionada.
 
@@ -40,6 +41,8 @@ O JSONL possui linhas pequenas e explícitas:
 - `tower_usage`: indica torres subusadas, dominantes ou saudáveis.
 - `qa_invalid_action`: guarda exemplos de ações inválidas e erros esperados.
 - `design_insight`: transforma recomendações em ações de design.
+
+Para autoaprendizado ativo, rode `npm run ai:train`. O Aegis Lab continua sendo a leitura unificada; o treino gera a política campeã.
 
 OpenAI pode ser conectado depois como analista opcional: resumir o JSON, comparar versões e sugerir issues. A IA não joga em tempo real e não precisa de tela para aprender.
 

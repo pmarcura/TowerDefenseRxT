@@ -10,6 +10,7 @@
     "simulate:balance": "node scripts/simulate-balancing.mjs",
     "simulate:balance:large": "node scripts/simulate-balancing.mjs --runs 5000",
     "ai:simulate": "node scripts/ai-simulate.mjs",
+    "ai:train": "node scripts/ai-train.mjs",
     "ai:analyze-report": "node scripts/analyze-balance-report.mjs",
     "lab:report": "node scripts/lab-report.mjs"
   },

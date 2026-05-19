@@ -4,6 +4,7 @@ import { BugHunterBot } from "./BugHunterBot";
 import { DefenseBot } from "./DefenseBot";
 import { EconomyBot } from "./EconomyBot";
 import { GreedyBot } from "./GreedyBot";
+import { ProBot } from "./ProBot";
 import { RandomBot } from "./RandomBot";
 
 export const headlessBots: Record<BotId, HeadlessBot> = {
@@ -12,7 +13,8 @@ export const headlessBots: Record<BotId, HeadlessBot> = {
   economy: EconomyBot,
   defense: DefenseBot,
   bosskiller: BossKillerBot,
-  bughunter: BugHunterBot
+  bughunter: BugHunterBot,
+  pro: ProBot
 };
 
 export const getHeadlessBot = (botId: string): HeadlessBot =>

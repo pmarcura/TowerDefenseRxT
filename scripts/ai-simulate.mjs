@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -9,6 +9,7 @@ const bot = readStringArg("--bot") ?? "random";
 const episodes = readNumberArg("--episodes", 1000);
 const seed = readNumberArg("--seed", 14729);
 const maxSteps = readNumberArg("--max-steps", 260);
+const policyPath = readStringArg("--policy");
 const tmpDir = path.join(rootDir, ".tmp", "ai-sim");
 const bundledModule = path.join(tmpDir, "runAiSimulation.mjs");
 const reportDir = path.join(rootDir, "reports", "ai");
@@ -27,7 +28,10 @@ await build({
 });
 
 const simulator = await import(`${pathToFileURL(bundledModule).href}?t=${Date.now()}`);
-const report = simulator.runAiSimulation({ bot, episodes, seed, maxSteps });
+const policy = policyPath
+  ? JSON.parse(await readFile(path.resolve(rootDir, policyPath), "utf8"))
+  : undefined;
+const report = simulator.runAiSimulation({ bot, episodes, seed, maxSteps, policy });
 const markdown = simulator.formatAiSimulationReport(report);
 const dashboard = simulator.formatAiDashboardHtml(report);
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
