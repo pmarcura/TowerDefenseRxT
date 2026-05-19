@@ -17,11 +17,15 @@ npm run dev
 npm run ai:simulate -- --bot greedy --episodes 1000
 npm run ai:simulate -- --bot bughunter --episodes 1000
 npm run simulate:balance -- --runs 1200
+npm run lab:report
 npm run ai:analyze-report
 ```
 
 Relatórios locais:
 
+- `reports/lab/dashboard.html`
+- `reports/lab/latest.md`
+- `reports/lab/learning-dataset.jsonl`
 - `reports/ai/dashboard.html`
 - `reports/ai/latest.md`
 - `reports/ai/analysis.md`

@@ -6,3 +6,4 @@ dist/
 reports/**/*.json
 reports/**/*.md
 reports/**/*.html
+reports/**/*.jsonl

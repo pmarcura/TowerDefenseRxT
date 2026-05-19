@@ -8,7 +8,8 @@ Este projeto mistura tower defense, co-op local e direção visual inspirada em 
 2. Rode `npm run build`.
 3. Para balanceamento, rode pelo menos `npm run ai:simulate -- --bot random --episodes 250`.
 4. Para mudanças em waves, torres ou economia, rode `npm run simulate:balance -- --runs 1200`.
-5. Para conteúdo cultural, explique a inspiração e o que foi evitado.
+5. Para mudanças grandes de gameplay, rode `npm run lab:report`.
+6. Para conteúdo cultural, explique a inspiração e o que foi evitado.
 
 ## Regras de design cultural
 
