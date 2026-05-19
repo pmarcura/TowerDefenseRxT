@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+/.tmp/
+/*.png
+reports/**/*.json
+reports/**/*.md
+reports/**/*.html
