@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -14,6 +14,7 @@ const aiBot = readStringArg("--ai-bot") ?? "greedy";
 const tmpDir = path.join(rootDir, ".tmp", "lab-report");
 const bundledModule = path.join(tmpDir, "createGameLabReport.mjs");
 const reportDir = path.join(rootDir, "reports", "lab");
+const humanLearningPath = readStringArg("--human-learning") ?? path.join(rootDir, "reports", "human", "learning-dataset.jsonl");
 
 await mkdir(tmpDir, { recursive: true });
 await mkdir(reportDir, { recursive: true });
@@ -29,13 +30,15 @@ await build({
 });
 
 const lab = await import(`${pathToFileURL(bundledModule).href}?t=${Date.now()}`);
+const humanLearningJsonl = await readOptionalFile(humanLearningPath);
 const report = lab.createGameLabReport({
   seed,
   balanceRuns,
   aiBot,
   aiEpisodes,
   bugHunterEpisodes,
-  maxSteps
+  maxSteps,
+  humanLearningJsonl
 });
 const rows = lab.createLearningRows(report.balance, report.ai, report.qa, report.insights);
 const markdown = lab.formatGameLabMarkdown(report);
@@ -68,8 +71,17 @@ console.log(`Balance win rate: ${(report.metrics.balanceWinRate * 100).toFixed(1
 console.log(`AI win rate: ${(report.metrics.aiWinRate * 100).toFixed(1)}%.`);
 console.log(`QA invariants: ${report.metrics.qaInvariantFailures}.`);
 console.log(`Learning rows: ${report.learning.rows}.`);
+console.log(`Human learning rows: ${report.learning.humanRows}.`);
 console.log(`Dashboard: ${path.relative(rootDir, files.latestDashboard)}`);
 console.log(`Dataset: ${path.relative(rootDir, files.latestDataset)}`);
+
+async function readOptionalFile(filePath) {
+  try {
+    return await readFile(filePath, "utf8");
+  } catch {
+    return "";
+  }
+}
 
 function readNumberArg(name, fallback) {
   const value = readStringArg(name);

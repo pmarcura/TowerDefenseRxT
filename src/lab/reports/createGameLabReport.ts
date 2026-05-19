@@ -12,6 +12,7 @@ import {
   type AiEpisodeSummary,
   type AiSimulationReport
 } from "../../ai/reports/runAiSimulation";
+import type { LearningSample } from "../../ai/telemetry/learningSamples";
 
 export type LabSeverity = "critical" | "high" | "medium" | "low";
 
@@ -31,6 +32,7 @@ export type GameLabReportOptions = {
   aiEpisodes?: number;
   bugHunterEpisodes?: number;
   maxSteps?: number;
+  humanLearningJsonl?: string;
 };
 
 export type GameLabMetricSet = {
@@ -44,11 +46,14 @@ export type GameLabMetricSet = {
   averageCreditsRemaining: number;
   underusedTowerCount: number;
   hardestWaveId: string;
+  humanLearningRows: number;
 };
 
 export type LearningDatasetSummary = {
   version: string;
   rows: number;
+  humanRows: number;
+  humanMatches: number;
   targetKinds: string[];
   recommendedUse: string[];
 };
@@ -61,9 +66,21 @@ export type GameLabReport = {
   metrics: GameLabMetricSet;
   insights: LabInsight[];
   learning: LearningDatasetSummary;
+  humanLearning: HumanLearningSummary;
   balance: BalanceSimulationReport;
   ai: AiSimulationReport;
   qa: AiSimulationReport;
+};
+
+export type HumanLearningSummary = {
+  rows: number;
+  matches: number;
+  sources: Record<string, number>;
+  kinds: Record<string, number>;
+  playerActions: number;
+  aiDecisions: number;
+  waveClears: number;
+  runEnds: number;
 };
 
 export type LearningRow = {
@@ -72,6 +89,7 @@ export type LearningRow = {
     | "wave_pressure"
     | "tower_usage"
     | "qa_invalid_action"
+    | "human_match_sample"
     | "design_insight";
   input: Record<string, unknown>;
   target: Record<string, unknown>;
@@ -89,7 +107,8 @@ export const createGameLabReport = (
     aiBot: options.aiBot ?? "greedy",
     aiEpisodes: options.aiEpisodes ?? 1000,
     bugHunterEpisodes: options.bugHunterEpisodes ?? 1000,
-    maxSteps: options.maxSteps ?? 260
+    maxSteps: options.maxSteps ?? 260,
+    humanLearningJsonl: options.humanLearningJsonl ?? ""
   };
   const balance = runBalanceSimulation({
     runs: normalizedOptions.balanceRuns,
@@ -108,9 +127,11 @@ export const createGameLabReport = (
     maxSteps: normalizedOptions.maxSteps,
     debug: true
   });
+  const humanSamples = parseHumanLearningSamples(normalizedOptions.humanLearningJsonl);
+  const humanLearning = createHumanLearningSummary(humanSamples);
   const insights = createInsights(balance, ai, qa);
-  const learningRows = createLearningRows(balance, ai, qa, insights);
-  const metrics = createMetrics(balance, ai, qa);
+  const learningRows = createLearningRows(balance, ai, qa, insights, humanSamples);
+  const metrics = createMetrics(balance, ai, qa, humanLearning);
 
   return {
     version: LAB_VERSION,
@@ -122,20 +143,25 @@ export const createGameLabReport = (
     learning: {
       version: "aegis-learning-jsonl-v1",
       rows: learningRows.length,
+      humanRows: humanLearning.rows,
+      humanMatches: humanLearning.matches,
       targetKinds: [
         "win_probability",
         "wave_risk",
         "tower_priority",
         "invalid_action_class",
+        "human_action_context",
         "design_action"
       ],
       recommendedUse: [
         "treinar heuristicas de bot parceiro",
+        "comparar decisoes humanas com decisoes da IA",
         "priorizar issues de balanceamento",
         "comparar regressao entre commits",
         "alimentar analise LLM opcional sem expor dados privados"
       ]
     },
+    humanLearning,
     balance,
     ai,
     qa
@@ -146,7 +172,8 @@ export const createLearningRows = (
   balance: BalanceSimulationReport,
   ai: AiSimulationReport,
   qa: AiSimulationReport,
-  insights: readonly LabInsight[]
+  insights: readonly LabInsight[],
+  humanSamples: readonly LearningSample[] = []
 ): LearningRow[] => {
   const rows: LearningRow[] = [];
 
@@ -223,6 +250,31 @@ export const createLearningRows = (
     }
   }
 
+  for (const sample of humanSamples.slice(-3000)) {
+    rows.push({
+      kind: "human_match_sample",
+      input: {
+        source: sample.source,
+        kind: sample.kind,
+        matchId: sample.matchId,
+        action: sample.action,
+        waveIndex: sample.waveIndex,
+        waveId: sample.waveId,
+        waveThreat: sample.waveThreat,
+        baseHp: sample.baseHp,
+        players: sample.players,
+        towers: sample.towers.slice(0, 32),
+        aiDecision: sample.aiDecision
+      },
+      target: {
+        result: sample.result ?? null,
+        shouldImitate: sample.kind === "player-action" || sample.kind === "wave-clear",
+        shouldExplain: sample.kind === "ai-decision"
+      },
+      weight: sample.kind === "player-action" ? 1.35 : sample.kind === "run-end" ? 1.5 : 0.75
+    });
+  }
+
   for (const insight of insights) {
     rows.push({
       kind: "design_insight",
@@ -245,6 +297,57 @@ export const createLearningRows = (
 export const formatLearningJsonl = (rows: readonly LearningRow[]): string =>
   `${rows.map((row) => JSON.stringify(row)).join("\n")}\n`;
 
+export const parseHumanLearningSamples = (jsonl: string): LearningSample[] => {
+  if (!jsonl.trim()) {
+    return [];
+  }
+
+  const samples: LearningSample[] = [];
+
+  for (const line of jsonl.split(/\r?\n/)) {
+    if (!line.trim()) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(line) as LearningSample;
+
+      if (parsed.schemaVersion === "aegis-learning-sample-v1" && parsed.source !== "headless") {
+        samples.push(parsed);
+      }
+    } catch {
+      // Invalid local rows are ignored so one bad export does not break the whole report.
+    }
+  }
+
+  return samples;
+};
+
+export const createHumanLearningSummary = (
+  samples: readonly LearningSample[]
+): HumanLearningSummary => {
+  const matches = new Set<string>();
+  const sources: Record<string, number> = {};
+  const kinds: Record<string, number> = {};
+
+  for (const sample of samples) {
+    matches.add(sample.matchId);
+    sources[sample.source] = (sources[sample.source] ?? 0) + 1;
+    kinds[sample.kind] = (kinds[sample.kind] ?? 0) + 1;
+  }
+
+  return {
+    rows: samples.length,
+    matches: matches.size,
+    sources,
+    kinds,
+    playerActions: kinds["player-action"] ?? 0,
+    aiDecisions: kinds["ai-decision"] ?? 0,
+    waveClears: kinds["wave-clear"] ?? 0,
+    runEnds: kinds["run-end"] ?? 0
+  };
+};
+
 export const formatGameLabMarkdown = (report: GameLabReport): string => {
   const lines = [
     "# Aegis Lab Report",
@@ -258,6 +361,8 @@ export const formatGameLabMarkdown = (report: GameLabReport): string => {
     `- AI win rate (${report.ai.bot}): ${formatPercent(report.metrics.aiWinRate)}`,
     `- QA invariant failures: ${report.metrics.qaInvariantFailures}`,
     `- Learning rows: ${report.learning.rows}`,
+    `- Human learning rows: ${report.learning.humanRows}`,
+    `- Human matches: ${report.learning.humanMatches}`,
     "",
     "## Highest Priority",
     ""
@@ -367,7 +472,7 @@ export const formatGameLabDashboardHtml = (report: GameLabReport): string => {
     .statusLine { display: grid; gap: 8px; }
     .statusLine h2 { font-size: 22px; line-height: 28px; }
     .statusLine p { max-width: 620px; }
-    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
     .metric { padding: 14px; min-height: 104px; }
     .metric span { display: block; color: var(--muted); font-size: 11px; line-height: 14px; font-weight: 760; text-transform: uppercase; }
     .metric strong { display: block; margin-top: 10px; font-size: 25px; line-height: 30px; }
@@ -439,6 +544,7 @@ export const formatGameLabDashboardHtml = (report: GameLabReport): string => {
         <span class="chip">seed ${report.seed}</span>
         <span class="chip">${escapeHtml(report.generatedAt)}</span>
         <span class="chip">${report.learning.rows} linhas de aprendizado</span>
+        <span class="chip">${report.learning.humanRows} linhas humanas</span>
       </div>
     </header>
     <section class="hero">
@@ -455,6 +561,7 @@ export const formatGameLabDashboardHtml = (report: GameLabReport): string => {
         ${metricCard("IA jogadora", formatPercent(report.metrics.aiWinRate), `${escapeHtml(report.ai.bot)} / ${report.ai.episodes} eps`)}
         ${metricCard("BugHunter", String(report.metrics.qaInvariantFailures), `${report.metrics.qaInvalidActions} ações inválidas`)}
         ${metricCard("Wave crítica", escapeHtml(report.metrics.hardestWaveId), `${report.metrics.averageWavesCleared.toFixed(2)} waves médias`)}
+        ${metricCard("Humano", String(report.metrics.humanLearningRows), `${report.learning.humanMatches} partidas exportadas`)}
       </div>
     </section>
     <nav class="tabs" aria-label="Seções do relatório">
@@ -513,7 +620,7 @@ export const formatGameLabDashboardHtml = (report: GameLabReport): string => {
         <div class="panel">
           <div class="panelHead"><div><h2>Dataset para IA</h2><p>JSONL local para heurísticas, regressão e análise LLM opcional.</p></div></div>
           <div class="bars" id="learningBars"></div>
-          <p class="footerNote">Arquivo: <span class="mono">reports/lab/learning-dataset.jsonl</span>. Não contém usuário, login, rede ou chave de API.</p>
+          <p class="footerNote">Arquivo final: <span class="mono">reports/lab/learning-dataset.jsonl</span>. Partidas humanas entram por <span class="mono">reports/human/learning-dataset.jsonl</span>. Não contém usuário, login, rede ou chave de API.</p>
         </div>
         <div class="panel">
           <div class="panelHead"><div><h2>Uso recomendado</h2><p>Como a IA deve aprender sem virar jogador em tempo real.</p></div></div>
@@ -585,7 +692,13 @@ export const formatGameLabDashboardHtml = (report: GameLabReport): string => {
       esc(replay.crash || "não"),
       esc(replay.lastAction)
     ]));
-    setBars("learningBars", data.learning.targets.map((target, index) => ({ label: target, value: index + 1, display: "ativo" })), data.learning.targets.length);
+    setBars("learningBars", [
+      { label: "linhas humanas", value: data.learning.humanRows, display: String(data.learning.humanRows) },
+      { label: "partidas humanas", value: data.learning.humanMatches, display: String(data.learning.humanMatches) },
+      { label: "ações humanas", value: data.learning.humanPlayerActions, display: String(data.learning.humanPlayerActions) },
+      { label: "decisões da IA local", value: data.learning.humanAiDecisions, display: String(data.learning.humanAiDecisions) },
+      ...data.learning.targets.map((target, index) => ({ label: target, value: index + 1, display: "ativo" }))
+    ], Math.max(data.learning.humanRows, data.learning.targets.length, 1));
     document.getElementById("learningUse").innerHTML = data.learning.recommendedUse.map(item =>
       '<article class="insight low"><h3>' + esc(item) + '</h3><p>Usar como dado local e versionado; análise OpenAI só entra quando uma chave for configurada fora do repositório.</p></article>'
     ).join("");
@@ -597,7 +710,8 @@ export const formatGameLabDashboardHtml = (report: GameLabReport): string => {
 const createMetrics = (
   balance: BalanceSimulationReport,
   ai: AiSimulationReport,
-  qa: AiSimulationReport
+  qa: AiSimulationReport,
+  humanLearning: HumanLearningSummary
 ): GameLabMetricSet => {
   const underusedTowerCount = Object.values(balance.towers).filter(
     (tower) => tower.buildShare < 0.012
@@ -631,7 +745,8 @@ const createMetrics = (
     averageWavesCleared: balance.averageWavesCleared,
     averageCreditsRemaining: balance.averageCreditsRemaining,
     underusedTowerCount,
-    hardestWaveId: hardestWave?.id ?? "none"
+    hardestWaveId: hardestWave?.id ?? "none",
+    humanLearningRows: humanLearning.rows
   };
 };
 
@@ -786,6 +901,10 @@ const createDashboardView = (report: GameLabReport) => ({
   })),
   learning: {
     rows: report.learning.rows,
+    humanRows: report.learning.humanRows,
+    humanMatches: report.learning.humanMatches,
+    humanPlayerActions: report.humanLearning.playerActions,
+    humanAiDecisions: report.humanLearning.aiDecisions,
     targets: report.learning.targetKinds,
     recommendedUse: report.learning.recommendedUse
   }

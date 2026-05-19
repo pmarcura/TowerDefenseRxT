@@ -3,6 +3,7 @@ import { getTowerDefinition } from "../data/towers";
 import { getTowerXpToNextLevel, towerProgression } from "../data/towerProgression";
 import { GameRegistry } from "../GameRegistry";
 import type { AllyEntity, EnemyEntity, PlayerId, TowerEntity } from "../models/types";
+import { addEnemyDamageFeedback } from "../utils/damageFeedback";
 import { buildPathWorldPoints } from "../utils/grid";
 import { distanceSquared, moveToward } from "../utils/math";
 import type { EconomySystem } from "./EconomySystem";
@@ -105,9 +106,7 @@ export class AllySystem implements GameSystem {
     enemy.hp -= dealtDamage;
     enemy.damageSources[ally.sourceTowerId] =
       (enemy.damageSources[ally.sourceTowerId] ?? 0) + dealtDamage;
-    enemy.recentDamageTotal += dealtDamage;
-    enemy.recentDamageTimerMs = 900;
-    enemy.recentDamageColor = ally.color;
+    addEnemyDamageFeedback(enemy, ally.ownerId, dealtDamage, false);
     enemy.lastHitFlashMs = 110;
 
     if (tower) {
@@ -120,7 +119,9 @@ export class AllySystem implements GameSystem {
       cueId: "hit",
       position: { ...enemy.position },
       amount: dealtDamage,
-      color: ally.color
+      color: this.getPlayerDamageColor(ally.ownerId),
+      sourcePlayerId: ally.ownerId,
+      sourceTowerId: ally.sourceTowerId
     });
 
     if (enemy.hp > 0) {
@@ -158,6 +159,10 @@ export class AllySystem implements GameSystem {
       tower.xpToNext = getTowerXpToNextLevel(tower.level);
       this.registry.applyAutoUpgradesForTower(tower.id);
     }
+  }
+
+  private getPlayerDamageColor(playerId: PlayerId): number {
+    return playerId === "p1" ? 0x83f3ff : 0xffd36d;
   }
 
   private moveAgainstRoute(ally: AllyEntity, deltaMs: number): void {

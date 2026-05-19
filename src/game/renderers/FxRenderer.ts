@@ -44,9 +44,10 @@ export class FxRenderer {
     }
 
     if (event.kind === "damage") {
-      this.drawLabel(event, `${Math.round(event.amount ?? 0)}`, color, alpha, -20 - progress * 22);
       this.graphics.fillStyle(color, 0.1 * alpha);
-      this.graphics.fillCircle(event.position.x, event.position.y, 10 + progress * 10);
+      this.graphics.fillCircle(event.position.x, event.position.y, 8 + progress * 8);
+      this.graphics.lineStyle(1, color, 0.2 * alpha);
+      this.graphics.strokeCircle(event.position.x, event.position.y, 13 + progress * 9);
       return;
     }
 

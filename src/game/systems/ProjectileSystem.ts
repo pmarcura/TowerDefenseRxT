@@ -8,6 +8,7 @@ import {
 } from "../data/towerProgression";
 import { GameRegistry } from "../GameRegistry";
 import type { EnemyEntity, PlayerId, ProjectileEntity } from "../models/types";
+import { addEnemyDamageFeedback } from "../utils/damageFeedback";
 import { buildPathWorldPoints } from "../utils/grid";
 import { distance, distanceSquared, moveToward } from "../utils/math";
 import type { EconomySystem } from "./EconomySystem";
@@ -175,10 +176,7 @@ export class ProjectileSystem implements GameSystem {
 
     enemy.hp -= dealtDamage;
     enemy.damageSources[towerId] = (enemy.damageSources[towerId] ?? 0) + dealtDamage;
-    enemy.recentDamageTotal += dealtDamage;
-    enemy.recentDamageTimerMs = 900;
-    enemy.recentDamageColor = isCritical ? 0xfff0a6 : tower.color;
-    enemy.recentDamageWasCritical = enemy.recentDamageWasCritical || isCritical;
+    addEnemyDamageFeedback(enemy, ownerId, dealtDamage, isCritical);
     enemy.lastHitFlashMs = isCritical ? 180 : 110;
     stats.totalDamageDealt += dealtDamage;
     stats.waveDamageDealt += dealtDamage;
@@ -187,7 +185,7 @@ export class ProjectileSystem implements GameSystem {
       cueId: isCritical ? "crit" : "hit",
       position: { ...enemy.position },
       amount: dealtDamage,
-      color: isCritical ? 0xfff0a6 : tower.color,
+      color: isCritical ? 0xfff0a6 : this.getPlayerDamageColor(ownerId),
       label: isCritical ? `CRIT ${Math.round(dealtDamage)}` : undefined,
       sourcePlayerId: ownerId,
       sourceTowerId: towerId
@@ -274,6 +272,10 @@ export class ProjectileSystem implements GameSystem {
     return (
       this.registry.state.towers.find((tower) => tower.id === projectile.towerId)?.ownerId ?? "p1"
     );
+  }
+
+  private getPlayerDamageColor(playerId: PlayerId): number {
+    return playerId === "p1" ? 0x83f3ff : 0xffd36d;
   }
 
   private addTowerDamage(towerId: string, dealtDamage: number): void {

@@ -2,6 +2,10 @@ import { ENEMY_REACHED_BASE_OFFSET_MS } from "../config/constants";
 import { getEnemyDefinition } from "../data/enemies";
 import { GameRegistry } from "../GameRegistry";
 import type { EnemyEntity } from "../models/types";
+import {
+  createEmptyDamageAccumulators,
+  updateEnemyDamageFeedback
+} from "../utils/damageFeedback";
 import { buildPathWorldPoints } from "../utils/grid";
 import { distance, moveToward } from "../utils/math";
 import type { EconomySystem } from "./EconomySystem";
@@ -36,6 +40,7 @@ export class EnemySystem implements GameSystem {
       recentDamageTimerMs: 0,
       recentDamageColor: definition.color,
       recentDamageWasCritical: false,
+      recentDamageByPlayer: createEmptyDamageAccumulators(),
       lastHitFlashMs: 0,
       alive: true
     };
@@ -76,20 +81,7 @@ export class EnemySystem implements GameSystem {
   }
 
   private updateDamageFeedback(enemy: EnemyEntity, deltaMs: number): void {
-    enemy.lastHitFlashMs = Math.max(0, enemy.lastHitFlashMs - deltaMs);
-
-    if (enemy.recentDamageTimerMs <= 0) {
-      enemy.recentDamageTotal = 0;
-      enemy.recentDamageWasCritical = false;
-      return;
-    }
-
-    enemy.recentDamageTimerMs = Math.max(0, enemy.recentDamageTimerMs - deltaMs);
-
-    if (enemy.recentDamageTimerMs <= 0) {
-      enemy.recentDamageTotal = 0;
-      enemy.recentDamageWasCritical = false;
-    }
+    updateEnemyDamageFeedback(enemy, deltaMs);
   }
 
   private moveEnemy(enemy: EnemyEntity, deltaMs: number): void {

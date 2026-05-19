@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getEnemyDefinition } from "../data/enemies";
-import type { EnemyEntity, GameState } from "../models/types";
+import { gameDesign, playerColor, toHexColor } from "../design/gameDesignSystem";
+import type { EnemyEntity, GameState, PlayerId } from "../models/types";
 
 export class EnemyRenderer {
   private readonly graphics: Phaser.GameObjects.Graphics;
@@ -175,40 +176,68 @@ export class EnemyRenderer {
   }
 
   private drawAccumulatedDamage(enemy: EnemyEntity, alpha: number): void {
-    const label = this.getDamageLabel(enemy.id);
-
-    if (enemy.recentDamageTimerMs <= 0 || enemy.recentDamageTotal <= 0 || !enemy.alive) {
-      label.setVisible(false);
-      return;
-    }
-
     const definition = getEnemyDefinition(enemy.typeId);
-    const ratio = Math.min(1, enemy.recentDamageTimerMs / 900);
-    const color = enemy.recentDamageWasCritical ? 0xfff0a6 : enemy.recentDamageColor;
-    const text = enemy.recentDamageWasCritical
-      ? `CRIT ${Math.round(enemy.recentDamageTotal)}`
-      : `${Math.round(enemy.recentDamageTotal)}`;
+    const topDamage = (["p1", "p2"] as const)
+      .map((playerId) => ({
+        playerId,
+        ...enemy.recentDamageByPlayer[playerId]
+      }))
+      .filter((entry) => entry.timerMs > 0 && entry.total > 0 && enemy.alive)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 2);
+    const visibleKeys = new Set<string>();
 
-    label.setVisible(true);
-    label.setText(text);
-    label.setPosition(enemy.position.x, enemy.position.y - definition.radius - 38);
-    label.setAlpha(Math.min(1, ratio * 1.25) * alpha);
-    label.setStyle({
-      fontFamily: "Inter, system-ui, sans-serif",
-      fontSize: enemy.recentDamageWasCritical ? "18px" : "14px",
-      fontStyle: "900",
-      color: `#${color.toString(16).padStart(6, "0")}`,
-      stroke: "#02050a",
-      strokeThickness: enemy.recentDamageWasCritical ? 5 : 4
+    topDamage.forEach((entry, index) => {
+      const key = this.getDamageLabelKey(enemy.id, entry.playerId);
+      const label = this.getDamageLabel(key);
+      const isCritical = entry.criticalTimerMs > 0 && entry.criticalTotal > 0;
+      const ratio = Math.min(1, entry.timerMs / 980);
+      const pulse = Math.min(1, entry.pulseMs / 180);
+      const yOffset = definition.traits.includes("boss") ? 56 + index * 25 : 40 + index * 21;
+      const xOffset = topDamage.length > 1 ? (index === 0 ? -22 : 22) : 0;
+      const color = playerColor(entry.playerId);
+      const text = `${entry.playerId.toUpperCase()} ${isCritical ? "CRIT " : ""}${Math.round(entry.total)}`;
+
+      visibleKeys.add(key);
+      label.setVisible(true);
+      label.setText(text);
+      label.setPosition(enemy.position.x + xOffset, enemy.position.y - definition.radius - yOffset);
+      label.setAlpha(Math.min(1, ratio * 1.35) * alpha);
+      label.setScale(1 + pulse * (isCritical ? 0.24 : 0.12));
+      label.setStyle({
+        fontFamily: gameDesign.font.family,
+        fontSize: `${isCritical ? 18 : 14}px`,
+        fontStyle: "900",
+        color: toHexColor(color),
+        stroke: isCritical ? "#fff0a6" : "#02050a",
+        strokeThickness: isCritical ? 6 : 4
+      });
+
+      if (isCritical) {
+        this.graphics.lineStyle(2, 0xfff0a6, 0.54 * alpha * ratio);
+        this.graphics.strokeCircle(enemy.position.x, enemy.position.y, definition.radius + 20 + pulse * 8);
+      }
     });
+
+    for (const playerId of ["p1", "p2"] as const) {
+      const key = this.getDamageLabelKey(enemy.id, playerId);
+
+      if (!visibleKeys.has(key)) {
+        this.getDamageLabel(key).setVisible(false);
+      }
+    }
   }
 
-  private getDamageLabel(enemyId: string): Phaser.GameObjects.Text {
-    let label = this.damageLabels.get(enemyId);
+  private getDamageLabelKey(enemyId: string, playerId: PlayerId): string {
+    return `${enemyId}:${playerId}`;
+  }
+
+  private getDamageLabel(labelKey: string): Phaser.GameObjects.Text {
+    let label = this.damageLabels.get(labelKey);
 
     if (!label) {
       label = this.scene.add.text(0, 0, "", {}).setOrigin(0.5).setDepth(12);
-      this.damageLabels.set(enemyId, label);
+      this.damageLabels.set(labelKey, label);
     }
 
     return label;
@@ -224,10 +253,12 @@ export class EnemyRenderer {
       }
     }
 
-    for (const [enemyId, label] of this.damageLabels) {
+    for (const [labelKey, label] of this.damageLabels) {
+      const enemyId = labelKey.split(":")[0];
+
       if (!liveEnemyIds.has(enemyId)) {
         label.destroy();
-        this.damageLabels.delete(enemyId);
+        this.damageLabels.delete(labelKey);
       }
     }
 

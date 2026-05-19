@@ -303,8 +303,18 @@ export type EnemyEntity = {
   recentDamageTimerMs: number;
   recentDamageColor: number;
   recentDamageWasCritical: boolean;
+  recentDamageByPlayer: Record<PlayerId, EnemyPlayerDamageAccumulator>;
   lastHitFlashMs: number;
   alive: boolean;
+};
+
+export type EnemyPlayerDamageAccumulator = {
+  total: number;
+  timerMs: number;
+  color: number;
+  criticalTotal: number;
+  criticalTimerMs: number;
+  pulseMs: number;
 };
 
 export type TowerEntity = {
