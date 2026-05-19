@@ -72,6 +72,11 @@ const createInitialState = (sessionMode: GameSessionMode = "solo-ai"): GameState
   debug: DEBUG_DEFAULT_ENABLED,
   settings: loadSettings(),
   runSummary: null,
+  aiPartner: {
+    active: sessionMode === "solo-ai",
+    decisionsLogged: 0,
+    lastDecision: null
+  },
   presentationEvents: [],
   activeMap: mapDefinition,
   economies: {
@@ -299,6 +304,14 @@ export class GameRegistry {
     this.state.messages = this.state.messages
       .map((message) => ({ ...message, ttlMs: message.ttlMs - deltaMs }))
       .filter((message) => message.ttlMs > 0);
+
+    if (this.state.aiPartner.lastDecision) {
+      this.state.aiPartner.lastDecision.ttlMs -= deltaMs;
+
+      if (this.state.aiPartner.lastDecision.ttlMs <= 0) {
+        this.state.aiPartner.lastDecision = null;
+      }
+    }
 
     this.state.presentationEvents = this.state.presentationEvents
       .map((event) => ({ ...event, ttlMs: event.ttlMs - deltaMs }))

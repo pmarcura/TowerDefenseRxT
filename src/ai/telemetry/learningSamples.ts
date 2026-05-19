@@ -9,6 +9,7 @@ export type LearningSampleKind =
   | "run-start"
   | "state-snapshot"
   | "player-action"
+  | "ai-decision"
   | "wave-start"
   | "wave-clear"
   | "run-end";
@@ -31,6 +32,17 @@ export type LearningTowerSnapshot = {
   grid?: { col: number; row: number };
 };
 
+export type LearningAiDecisionSnapshot = {
+  kind: string;
+  title: string;
+  detail: string;
+  confidence: number;
+  score: number;
+  routeIndex?: number;
+  towerId?: string;
+  tags: string[];
+};
+
 export type LearningSample = {
   schemaVersion: "aegis-learning-sample-v1";
   matchId: string;
@@ -49,6 +61,7 @@ export type LearningSample = {
   playerCount: number;
   players: LearningPlayerSnapshot[];
   towers: LearningTowerSnapshot[];
+  aiDecision?: LearningAiDecisionSnapshot;
   action?: GameAction;
   result?: "victory" | "defeat" | "timeout";
   errors?: readonly string[];
@@ -97,6 +110,18 @@ export const createLearningSampleFromGameState = (
       damage: tower.damageDealt,
       grid: tower.grid
     })),
+    aiDecision: state.aiPartner.lastDecision
+      ? {
+          kind: state.aiPartner.lastDecision.kind,
+          title: state.aiPartner.lastDecision.title,
+          detail: state.aiPartner.lastDecision.detail,
+          confidence: state.aiPartner.lastDecision.confidence,
+          score: state.aiPartner.lastDecision.score,
+          routeIndex: state.aiPartner.lastDecision.routeIndex,
+          towerId: state.aiPartner.lastDecision.towerId,
+          tags: state.aiPartner.lastDecision.tags
+        }
+      : undefined,
     action,
     result,
     errors

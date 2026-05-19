@@ -447,6 +447,26 @@ export type PresentationEvent = {
   sourceTowerId?: string;
 };
 
+export type AiDecisionKind = "build" | "upgrade" | "reward" | "ready" | "hold";
+
+export type AiDecisionState = {
+  kind: AiDecisionKind;
+  title: string;
+  detail: string;
+  confidence: number;
+  score: number;
+  routeIndex?: number;
+  towerId?: string;
+  tags: string[];
+  ttlMs: number;
+};
+
+export type AiPartnerState = {
+  active: boolean;
+  decisionsLogged: number;
+  lastDecision: AiDecisionState | null;
+};
+
 export type RoundNoticeTone = "start" | "complete" | "boss" | "danger";
 
 export type RoundNoticeState = {
@@ -501,6 +521,7 @@ export type GameState = {
   debug: boolean;
   settings: GameSettings;
   runSummary: RunStats | null;
+  aiPartner: AiPartnerState;
   presentationEvents: PresentationEvent[];
   activeMap: MapDefinition;
   economies: Record<PlayerId, PlayerEconomyState>;

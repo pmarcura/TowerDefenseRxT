@@ -3,7 +3,6 @@ import { gameUiBridge } from "../game/bridge/RewardBridge";
 import { PauseOverlay } from "./PauseOverlay";
 import { RewardColumn } from "./RewardColumn";
 import { RunSummaryOverlay } from "./RunSummaryOverlay";
-import { TowerInspectionOverlay } from "./TowerInspectionOverlay";
 
 export const GameOverlayApp = () => {
   const [, setTick] = useState(0);
@@ -26,7 +25,7 @@ export const GameOverlayApp = () => {
   }
 
   if (state.phase !== "reward-selection" || !rewardSelection) {
-    return state.phase === "playing" ? <TowerInspectionOverlay state={state} /> : null;
+    return null;
   }
 
   return (

@@ -1,6 +1,13 @@
 import { getSkillDefinition } from "../data/skills";
 import { towerBranchDefinitions } from "../data/towerBranches";
-import type { TowerDefinition } from "../models/types";
+import type { GameAction } from "../actions/types";
+import type {
+  AiDecisionKind,
+  GridPoint,
+  TowerDefinition,
+  TowerUpgradeBranchId
+} from "../models/types";
+import { RunTelemetry } from "../telemetry/RunTelemetry";
 import { gridKey, isGridOnPath, isInsideGrid } from "../utils/grid";
 import type { GameRegistry } from "../GameRegistry";
 import type { BuildSystem } from "./BuildSystem";
@@ -12,7 +19,34 @@ const BUILD_THINK_INTERVAL_MS = 1500;
 const UPGRADE_THINK_INTERVAL_MS = 900;
 const REWARD_THINK_INTERVAL_MS = 650;
 
+type AiScoredTower = {
+  tower: TowerDefinition;
+  index: number;
+  cost: number;
+  score: number;
+  tags: string[];
+};
+
+type AiGridChoice = {
+  grid: GridPoint;
+  score: number;
+  routeIndex: number;
+  tags: string[];
+};
+
+type AiBuildPlan = {
+  tower: TowerDefinition;
+  index: number;
+  cost: number;
+  grid: GridPoint;
+  routeIndex: number;
+  score: number;
+  confidence: number;
+  tags: string[];
+};
+
 export class AiPartnerSystem implements GameSystem {
+  private readonly telemetry = RunTelemetry.getInstance();
   private buildThinkMs = 500;
   private upgradeThinkMs = 800;
   private rewardThinkMs = 450;
@@ -62,7 +96,19 @@ export class AiPartnerSystem implements GameSystem {
 
       if (skillId) {
         this.skillTreeSystem.selectReward(AI_PLAYER_ID, skillId);
-        this.registry.pushPlayerNotice("p1", "IA ESCOLHEU", getSkillDefinition(skillId).shortName, "info", 1600);
+        const skill = getSkillDefinition(skillId);
+        this.commitDecision(
+          "reward",
+          `Reward: ${skill.shortName}`,
+          this.describeSkillChoice(skillId),
+          0.76,
+          this.scoreSkill(skillId),
+          ["recompensa", skill.rarity, skill.branch],
+          { type: "SELECT_REWARD", playerId: AI_PLAYER_ID, skillId },
+          undefined,
+          skillId
+        );
+        this.registry.pushPlayerNotice("p1", "IA ESCOLHEU", skill.shortName, "info", 1600);
       }
     }
 
@@ -83,6 +129,15 @@ export class AiPartnerSystem implements GameSystem {
 
     if (this.readyThinkMs <= 0) {
       this.registry.setPlayerReady(AI_PLAYER_ID);
+      this.commitDecision(
+        "ready",
+        "Pronto",
+        "defesa minima pronta",
+        0.68,
+        this.registry.state.towers.filter((tower) => tower.ownerId === AI_PLAYER_ID).length,
+        ["tempo", "onda"],
+        { type: "SET_READY", playerId: AI_PLAYER_ID, ready: true }
+      );
       this.readyThinkMs = 900;
     }
   }
@@ -109,6 +164,22 @@ export class AiPartnerSystem implements GameSystem {
 
     if (branch) {
       this.registry.spendTowerUpgradePoint(AI_PLAYER_ID, candidate.id, branch.id);
+      this.commitDecision(
+        "upgrade",
+        `Upgrade ${branch.shortName}`,
+        `torre com ${Math.round(candidate.damageDealt)} dano`,
+        0.72,
+        candidate.damageDealt / 100 + candidate.level,
+        ["xp", branch.id, candidate.level >= 3 ? "carry" : "crescimento"],
+        {
+          type: "UPGRADE_TOWER",
+          playerId: AI_PLAYER_ID,
+          towerId: candidate.id,
+          branchId: branch.id
+        },
+        undefined,
+        candidate.id
+      );
     }
   }
 
@@ -121,45 +192,100 @@ export class AiPartnerSystem implements GameSystem {
 
     this.buildThinkMs = BUILD_THINK_INTERVAL_MS;
     const state = this.registry.state;
-    const towers = this.buildSystem.getAvailableTowers(AI_PLAYER_ID);
-    const affordable = towers
-      .map((tower, index) => ({
-        tower,
-        index,
-        cost: this.buildSystem.getTowerCostForPlayer(AI_PLAYER_ID, tower.id),
-        score: this.scoreTower(tower)
-      }))
-      .filter((entry) => state.economies[AI_PLAYER_ID].credits >= entry.cost)
-      .sort((a, b) => b.score - a.score);
+    const plan = this.chooseBuildPlan();
 
-    for (const entry of affordable) {
-      const grid = this.chooseBuildGrid(entry.tower);
+    if (!plan) {
+      this.commitDecision(
+        "hold",
+        "Segurando creditos",
+        "sem posicao eficiente agora",
+        0.52,
+        0,
+        ["economia", "sem-slot"]
+      );
+      return;
+    }
 
-      if (!grid) {
-        continue;
-      }
+    state.cursors[AI_PLAYER_ID].grid = plan.grid;
+    this.buildSystem.selectTower(AI_PLAYER_ID, plan.index);
 
-      state.cursors[AI_PLAYER_ID].grid = grid;
-      this.buildSystem.selectTower(AI_PLAYER_ID, entry.index);
-
-      if (this.buildSystem.tryBuildForPlayer(AI_PLAYER_ID)) {
-        this.registry.pushPlayerNotice(
-          "p1",
-          "IA CONSTRUIU",
-          `${entry.tower.shortName} na rota ${this.describeNearestRoute(grid)}`,
-          "info",
-          1500
-        );
-        return;
-      }
+    if (this.buildSystem.tryBuildForPlayer(AI_PLAYER_ID)) {
+      this.commitDecision(
+        "build",
+        `${plan.tower.shortName} R${plan.routeIndex + 1}`,
+        `${Math.round(plan.score)} pts · ${plan.tags.slice(0, 2).join(" + ")}`,
+        plan.confidence,
+        plan.score,
+        plan.tags,
+        {
+          type: "BUILD_TOWER",
+          playerId: AI_PLAYER_ID,
+          towerId: plan.tower.id,
+          grid: { ...plan.grid }
+        },
+        plan.routeIndex,
+        plan.tower.id
+      );
+      this.registry.pushPlayerNotice(
+        "p1",
+        "IA CONSTRUIU",
+        `${plan.tower.shortName} · rota ${plan.routeIndex + 1}`,
+        "info",
+        1500
+      );
     }
   }
 
-  private chooseBuildGrid(tower: TowerDefinition) {
+  private chooseBuildPlan(): AiBuildPlan | null {
+    const state = this.registry.state;
+    const towers = this.buildSystem.getAvailableTowers(AI_PLAYER_ID);
+    const reserve = this.getCreditReserve();
+    const plans = towers
+      .map((tower, index) => {
+        const cost = this.buildSystem.getTowerCostForPlayer(AI_PLAYER_ID, tower.id);
+        const towerScore = this.scoreTower(tower, cost, index);
+
+        if (state.economies[AI_PLAYER_ID].credits - cost < reserve && tower.effect !== "income") {
+          towerScore.score -= 4;
+          towerScore.tags.push("reserva");
+        }
+
+        if (state.economies[AI_PLAYER_ID].credits < cost) {
+          return null;
+        }
+
+        const grid = this.chooseBuildGrid(tower);
+
+        if (!grid) {
+          return null;
+        }
+
+        const score = towerScore.score + grid.score - cost / 120;
+        const confidence = Math.max(0.45, Math.min(0.94, 0.48 + score / 24));
+
+        return {
+          tower,
+          index,
+          cost,
+          grid: grid.grid,
+          routeIndex: grid.routeIndex,
+          score,
+          confidence,
+          tags: [...towerScore.tags, ...grid.tags].slice(0, 5)
+        };
+      })
+      .filter((plan): plan is AiBuildPlan => Boolean(plan))
+      .filter((plan) => plan.score > 4.5)
+      .sort((a, b) => b.score - a.score);
+
+    return plans[0] ?? null;
+  }
+
+  private chooseBuildGrid(tower: TowerDefinition): AiGridChoice | null {
     const state = this.registry.state;
     const map = state.activeMap;
     const occupied = new Set(state.towers.map((entity) => gridKey(entity.grid)));
-    const candidates: { grid: { col: number; row: number }; score: number }[] = [];
+    const candidates: AiGridChoice[] = [];
 
     for (let row = 0; row < map.rows; row += 1) {
       for (let col = 0; col < map.columns; col += 1) {
@@ -171,22 +297,26 @@ export class AiPartnerSystem implements GameSystem {
 
         const score = this.scoreGrid(grid, tower);
 
-        if (score > -8) {
-          candidates.push({ grid, score });
+        if (score.score > -8) {
+          candidates.push({ grid, ...score });
         }
       }
     }
 
-    return candidates.sort((a, b) => b.score - a.score)[0]?.grid ?? null;
+    return candidates.sort((a, b) => b.score - a.score)[0] ?? null;
   }
 
-  private scoreGrid(grid: { col: number; row: number }, tower: TowerDefinition): number {
+  private scoreGrid(grid: GridPoint, tower: TowerDefinition): Omit<AiGridChoice, "grid"> {
     const map = this.registry.state.activeMap;
     const rangeTiles = tower.range / map.tileSize;
     let score = 0;
     let coveredRoutes = 0;
+    let bestRouteIndex = 0;
+    let highestRouteScore = Number.NEGATIVE_INFINITY;
+    const tags: string[] = [];
 
-    for (const path of map.paths) {
+    for (let routeIndex = 0; routeIndex < map.paths.length; routeIndex += 1) {
+      const path = map.paths[routeIndex];
       let bestDistance = Number.POSITIVE_INFINITY;
       let bestProgress = 0;
 
@@ -201,12 +331,25 @@ export class AiPartnerSystem implements GameSystem {
 
       if (bestDistance <= rangeTiles) {
         coveredRoutes += 1;
-        score += 4.2 + bestProgress * 3;
+        const routeScore = 4.2 + bestProgress * 4 + Math.max(0, 4 - bestDistance) * 0.55;
+        score += routeScore;
+        if (routeScore > highestRouteScore) {
+          highestRouteScore = routeScore;
+          bestRouteIndex = routeIndex;
+        }
       } else {
         score -= Math.min(5, bestDistance - rangeTiles);
       }
 
       score += Math.max(0, 5 - bestDistance) * 0.55;
+
+      if (bestProgress >= 0.62 && bestDistance <= rangeTiles + 1) {
+        tags.push("fim-da-rota");
+      }
+
+      if (bestDistance <= 2) {
+        tags.push("perto-rota");
+      }
     }
 
     const nearbyTowerPenalty = this.registry.state.towers.reduce((penalty, existing) => {
@@ -215,39 +358,61 @@ export class AiPartnerSystem implements GameSystem {
       return penalty + Math.max(0, 3 - distance);
     }, 0);
 
-    return score + Math.max(0, coveredRoutes - 1) * 4 - nearbyTowerPenalty * 0.7;
+    if (coveredRoutes > 1) {
+      tags.push("multi-rota");
+    }
+
+    if (nearbyTowerPenalty <= 1) {
+      tags.push("espacado");
+    }
+
+    return {
+      score: score + Math.max(0, coveredRoutes - 1) * 4 - nearbyTowerPenalty * 0.7,
+      routeIndex: bestRouteIndex,
+      tags: [...new Set(tags)]
+    };
   }
 
-  private scoreTower(tower: TowerDefinition): number {
+  private scoreTower(tower: TowerDefinition, cost: number, index: number): AiScoredTower {
     const state = this.registry.state;
     const existingSameType = state.towers.filter(
       (candidate) => candidate.ownerId === AI_PLAYER_ID && candidate.typeId === tower.id
     ).length;
     const dps = tower.damage > 0 ? tower.damage / Math.max(0.2, tower.cooldownMs / 1000) : 0;
-    let score = dps / Math.max(35, tower.cost) * 18 + tower.range / 100 - existingSameType * 1.5;
+    const tags: string[] = [];
+    let score = dps / Math.max(35, cost) * 18 + tower.range / 100 - existingSameType * 1.5;
+
+    if (dps > 18) {
+      tags.push("dps");
+    }
 
     if (tower.effect === "income") {
       score += state.wave.currentWaveIndex <= 2 && existingSameType < 2 ? 4.8 : -3.6;
+      tags.push(state.wave.currentWaveIndex <= 2 ? "economia-cedo" : "economia-tarde");
     }
 
     if (tower.effect === "splash" || tower.effect === "chain" || tower.effect === "ritual-zone") {
       score += 2.1;
+      tags.push("grupo");
     }
 
     if (tower.effect === "mark" || tower.effect === "cleanse") {
       score += state.wave.currentWaveIndex >= 3 ? 2.4 : 0.5;
+      tags.push("anti-blindado");
     }
 
     if (tower.effect === "summon" || tower.effect === "slow" || tower.effect === "redirect") {
       score += state.activeMap.paths.length > 1 ? 2.2 : 1.1;
+      tags.push("controle");
     }
 
     if (tower.effect === "aura") {
       const nearbyAllies = state.towers.filter((candidate) => candidate.ownerId === AI_PLAYER_ID).length;
       score += nearbyAllies >= 3 ? 2.8 : -2.2;
+      tags.push(nearbyAllies >= 3 ? "aura-valor" : "aura-cedo");
     }
 
-    return score;
+    return { tower, index, cost, score, tags };
   }
 
   private scoreSkill(skillId: string): number {
@@ -263,7 +428,7 @@ export class AiPartnerSystem implements GameSystem {
     return score;
   }
 
-  private scoreBranch(branchId: string): number {
+  private scoreBranch(branchId: TowerUpgradeBranchId): number {
     if (branchId === "focus") {
       return 5;
     }
@@ -295,5 +460,67 @@ export class AiPartnerSystem implements GameSystem {
       .sort((a, b) => a.distance - b.distance)[0];
 
     return (best?.index ?? 0) + 1;
+  }
+
+  private getCreditReserve(): number {
+    const state = this.registry.state;
+    const towerCount = state.towers.filter((tower) => tower.ownerId === AI_PLAYER_ID).length;
+
+    if (towerCount < 2) {
+      return 0;
+    }
+
+    return Math.min(44, 8 + state.wave.currentWaveIndex * 3);
+  }
+
+  private describeSkillChoice(skillId: string): string {
+    const skill = getSkillDefinition(skillId);
+
+    if (skill.effect.damageMultiplier) {
+      return "mais dano para a run";
+    }
+
+    if (skill.effect.costMultiplier) {
+      return "torres mais baratas";
+    }
+
+    if (skill.effect.rewardMultiplier) {
+      return "mais economia";
+    }
+
+    if (skill.effect.rangeBonus) {
+      return "mais alcance";
+    }
+
+    return skill.branch;
+  }
+
+  private commitDecision(
+    kind: AiDecisionKind,
+    title: string,
+    detail: string,
+    confidence: number,
+    score: number,
+    tags: string[],
+    action?: GameAction,
+    routeIndex?: number,
+    towerId?: string
+  ): void {
+    const state = this.registry.state;
+
+    state.aiPartner.active = true;
+    state.aiPartner.decisionsLogged += 1;
+    state.aiPartner.lastDecision = {
+      kind,
+      title,
+      detail,
+      confidence: Math.round(confidence * 100) / 100,
+      score: Math.round(score * 10) / 10,
+      routeIndex,
+      towerId,
+      tags: [...new Set(tags)].slice(0, 5),
+      ttlMs: kind === "hold" ? 1700 : 3600
+    };
+    this.telemetry.record("ai-decision", state, action);
   }
 }

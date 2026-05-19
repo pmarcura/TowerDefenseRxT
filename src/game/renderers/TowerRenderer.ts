@@ -17,6 +17,7 @@ export class TowerRenderer {
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly sprites = new Map<string, Phaser.GameObjects.Image>();
   private readonly levelLabels = new Map<string, Phaser.GameObjects.Text>();
+  private readonly ownerLabels = new Map<string, Phaser.GameObjects.Text>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -45,7 +46,10 @@ export class TowerRenderer {
 
     this.syncLevelLabels(state, focusedTowerIds);
     this.drawCursor(state, "p1");
-    this.drawCursor(state, "p2");
+    if (state.sessionMode !== "solo-ai") {
+      this.drawCursor(state, "p2");
+    }
+    this.syncOwnerLabels(state);
   }
 
   private drawRange(tower: TowerEntity): void {
@@ -325,6 +329,54 @@ export class TowerRenderer {
       label.setColor(toHexColor(definition.glow));
       label.setPosition(tower.position.x, tower.position.y - 34 - tower.level);
       label.setVisible(true);
+    }
+  }
+
+  private syncOwnerLabels(state: GameState): void {
+    const liveTowerIds = new Set(state.towers.map((tower) => tower.id));
+
+    for (const [towerId, label] of this.ownerLabels) {
+      if (!liveTowerIds.has(towerId)) {
+        label.destroy();
+        this.ownerLabels.delete(towerId);
+      }
+    }
+
+    for (const tower of state.towers) {
+      const shouldShow = tower.ownerId === "p2" || state.sessionMode !== "solo-ai";
+      let label = this.ownerLabels.get(tower.id);
+
+      if (!label) {
+        label = this.scene.add
+          .text(tower.position.x, tower.position.y + 31, "", {
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontSize: "9px",
+            fontStyle: "900",
+            color: "#ffffff",
+            stroke: "#02050a",
+            strokeThickness: 4
+          })
+          .setOrigin(0.5)
+          .setDepth(9);
+        this.ownerLabels.set(tower.id, label);
+      }
+
+      if (!shouldShow) {
+        label.setVisible(false);
+        continue;
+      }
+
+      const playerClass = getPlayerClassDefinition(state.playerClasses[tower.ownerId]);
+
+      label.setText(tower.ownerId.toUpperCase());
+      label.setColor(toHexColor(playerClass.accent));
+      label.setPosition(tower.position.x, tower.position.y + 31 + Math.min(7, tower.level));
+      label.setVisible(true);
+
+      this.graphics.fillStyle(0x020712, 0.82);
+      this.graphics.fillRoundedRect(tower.position.x - 14, tower.position.y + 29, 28, 13, 4);
+      this.graphics.lineStyle(1, playerClass.accent, 0.62);
+      this.graphics.strokeRoundedRect(tower.position.x - 14, tower.position.y + 29, 28, 13, 4);
     }
   }
 
