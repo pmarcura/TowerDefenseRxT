@@ -426,7 +426,7 @@ const prepareForWave = (
   map: MapDefinition,
   waveIndex: number
 ): void => {
-  const passes = wave.isBoss ? 5 : waveIndex < 2 ? 2 : 3;
+  const passes = wave.isBoss ? 6 : waveIndex >= 7 ? 5 : waveIndex < 2 ? 2 : 3;
   const playerOrder = run.rng.next() > 0.5 ? playerIds : [...playerIds].reverse();
 
   for (let pass = 0; pass < passes; pass += 1) {
@@ -790,6 +790,32 @@ const scoreTower = (
     score += enemyMix.swarm * 0.42 + enemyMix.runner * 0.5 + map.paths.length * 0.9;
   }
 
+  if (tower.effect === "summon") {
+    score += enemyMix.runner * 0.45 + enemyMix.swarm * 0.18 + map.paths.length * 1.2;
+  }
+
+  if (tower.effect === "aura") {
+    const ownedNearbyCandidates = run.towers.filter((candidate) => candidate.ownerId === player.id).length;
+
+    score += ownedNearbyCandidates >= 3 ? 7 - existingSameType * 4 : -3;
+  }
+
+  if (tower.effect === "mark") {
+    score += enemyMix.boss * 7 + enemyMix.tank * 2.2 + enemyMix.shield * 1.4;
+  }
+
+  if (tower.effect === "cleanse") {
+    score += enemyMix.shield * 2.5 + enemyMix.tank * 1.7 + enemyMix.boss * 1.2;
+  }
+
+  if (tower.effect === "ritual-zone") {
+    score += enemyMix.swarm * 0.24 + enemyMix.shield * 1.6 + map.paths.length * 1.4;
+  }
+
+  if (tower.effect === "redirect") {
+    score += enemyMix.runner * 0.34 + enemyMix.swarm * 0.12 + (wave.isBoss ? -2 : 1.8);
+  }
+
   if (wave.isBoss && tower.effect === "chain") {
     score -= 2.5;
   }
@@ -823,27 +849,73 @@ const getTowerDamagePerSecond = (
     return 0;
   }
 
+  if (definition.effect === "income" || definition.effect === "aura") {
+    return 0;
+  }
+
   const owner = run.players[tower.ownerId];
   const playerClass = getPlayerClassDefinition(owner.classId);
   const skillEffects = getSkillEffectTotals(owner.id, owner.skillRanks);
   const levelBonuses = getTowerLevelBonuses(tower.level);
   const branchEffects = getTowerBranchEffectTotals(tower.branchRanks);
+  const auraEffects = getSimAuraEffects(run, tower, map);
+  const baseDamage = definition.damage > 0 ? definition.damage : definition.effect === "ritual-zone" ? 12 : 0;
+
+  if (baseDamage <= 0) {
+    return 0;
+  }
+
   const shotDamage = Math.max(
     1,
-    definition.damage *
+    baseDamage *
       playerClass.damageMultiplier *
       skillEffects.damageMultiplier *
       levelBonuses.damageMultiplier *
       branchEffects.damageMultiplier -
       enemy.armor
-  );
+  ) * auraEffects.damageMultiplier;
   const shotsPerSecond =
     1000 /
-    (definition.cooldownMs * levelBonuses.cooldownMultiplier * branchEffects.cooldownMultiplier);
+    (definition.cooldownMs *
+      levelBonuses.cooldownMultiplier *
+      branchEffects.cooldownMultiplier *
+      auraEffects.cooldownMultiplier);
   const routeCoverage = getRouteCoverage(tower, definition, pathIndex, map);
   const effectMultiplier = getEffectMultiplier(definition, enemy, tower.branchRanks);
 
   return shotDamage * shotsPerSecond * routeCoverage * effectMultiplier;
+};
+
+const getSimAuraEffects = (
+  run: SimRunState,
+  tower: SimTower,
+  map: MapDefinition
+): { damageMultiplier: number; cooldownMultiplier: number } => {
+  let damageMultiplier = 1;
+  let cooldownMultiplier = 1;
+
+  for (const candidate of run.towers) {
+    if (candidate.id === tower.id || candidate.ownerId !== tower.ownerId) {
+      continue;
+    }
+
+    const definition = towerDefinitions.find((entry) => entry.id === candidate.typeId);
+
+    if (definition?.effect !== "aura") {
+      continue;
+    }
+
+    const laneMatches = candidate.lane === tower.lane || map.paths.length === 1;
+
+    if (!laneMatches) {
+      continue;
+    }
+
+    damageMultiplier *= definition.auraDamageMultiplier ?? 1;
+    cooldownMultiplier *= definition.auraCooldownMultiplier ?? 1;
+  }
+
+  return { damageMultiplier, cooldownMultiplier };
 };
 
 const getControlMultiplier = (
@@ -856,7 +928,7 @@ const getControlMultiplier = (
     .filter((tower) => {
       const definition = towerDefinitions.find((candidate) => candidate.id === tower.typeId);
 
-      return definition?.effect === "slow";
+      return definition?.effect === "slow" || definition?.effect === "redirect" || definition?.effect === "summon";
     })
     .reduce((sum, tower) => {
       const definition = towerDefinitions.find((candidate) => candidate.id === tower.typeId);
@@ -865,7 +937,10 @@ const getControlMultiplier = (
         return sum;
       }
 
-      return sum + getRouteCoverage(tower, definition, pathIndex, map) * (0.12 + tower.level * 0.035);
+      const effectWeight =
+        definition.effect === "slow" ? 0.12 : definition.effect === "redirect" ? 0.08 : 0.06;
+
+      return sum + getRouteCoverage(tower, definition, pathIndex, map) * (effectWeight + tower.level * 0.028);
     }, 0);
   const bossBonus = enemy.traits.includes("boss") ? 0.12 : 0;
 
@@ -919,6 +994,26 @@ const getEffectMultiplier = (
 
   if (tower.effect === "income") {
     return 0;
+  }
+
+  if (tower.effect === "summon") {
+    return (enemy.traits.includes("boss") ? 0.82 : enemy.traits.includes("rapido") ? 1.22 : 1.08) + ruptureBonus + chainBonus;
+  }
+
+  if (tower.effect === "mark") {
+    return (enemy.traits.includes("boss") ? 1.55 : enemy.traits.includes("blindado") ? 1.22 : 1.08) + ruptureBonus + chainBonus;
+  }
+
+  if (tower.effect === "cleanse") {
+    return (enemy.traits.includes("escudo") || enemy.traits.includes("blindado") ? 1.48 : 1.04) + ruptureBonus + chainBonus;
+  }
+
+  if (tower.effect === "ritual-zone") {
+    return (enemy.traits.includes("enxame") ? 1.7 : enemy.traits.includes("escudo") ? 1.32 : 1.14) + ruptureBonus + chainBonus;
+  }
+
+  if (tower.effect === "redirect") {
+    return (enemy.traits.includes("boss") ? 0.68 : enemy.traits.includes("rapido") ? 1.24 : 1.02) + ruptureBonus + chainBonus;
   }
 
   return (enemy.traits.includes("enxame") || enemy.traits.includes("rapido") ? 2.05 : 1.02) + ruptureBonus + chainBonus;
@@ -1054,22 +1149,22 @@ const getDesiredTowerCount = (
   const bossBonus = isBoss ? 1 : 0;
 
   if (profile === "novice") {
-    return Math.min(7, 1 + Math.floor(waveIndex * 0.55) + bossBonus);
+    return Math.min(12, 2 + Math.floor(waveIndex * 0.82) + bossBonus);
   }
 
   if (profile === "economist") {
-    return Math.min(8, 1 + Math.floor(waveIndex * 0.68) + bossBonus);
+    return Math.min(16, 2 + Math.floor(waveIndex * 1.08) + bossBonus);
   }
 
   if (profile === "aggressive") {
-    return Math.min(11, 2 + Math.floor(waveIndex * 0.95) + bossBonus);
+    return Math.min(18, 3 + Math.floor(waveIndex * 1.22) + bossBonus);
   }
 
   if (profile === "experimental") {
-    return Math.min(9, 2 + Math.floor(waveIndex * 0.72) + bossBonus);
+    return Math.min(16, 2 + Math.floor(waveIndex * 1.08) + bossBonus);
   }
 
-  return Math.min(9, 2 + Math.floor(waveIndex * 0.75) + bossBonus);
+  return Math.min(16, 2 + Math.floor(waveIndex * 1.02) + bossBonus);
 };
 
 const getProfileTowerBias = (
@@ -1077,15 +1172,21 @@ const getProfileTowerBias = (
   tower: TowerDefinition
 ): number => {
   if (profile === "aggressive") {
-    return tower.effect === "damage" || tower.effect === "splash" ? 2.8 : 0;
+    return tower.effect === "damage" || tower.effect === "splash" || tower.effect === "mark" ? 2.8 : 0;
   }
 
   if (profile === "economist") {
-    return tower.cost <= 72 ? 2.4 : -0.6;
+    return tower.effect === "income" ? 5 : tower.cost <= 72 ? 2.4 : -0.6;
   }
 
   if (profile === "experimental") {
-    return tower.effect === "chain" || tower.effect === "slow" ? 2.2 : 0.4;
+    return tower.effect === "chain" ||
+      tower.effect === "slow" ||
+      tower.effect === "summon" ||
+      tower.effect === "ritual-zone" ||
+      tower.effect === "redirect"
+      ? 2.2
+      : 0.4;
   }
 
   if (profile === "novice") {
@@ -1301,7 +1402,7 @@ const createRecommendations = (report: BalanceSimulationReport): string[] => {
       continue;
     }
 
-    if (tower.buildShare < 0.08) {
+    if (tower.buildShare < 0.012) {
       recommendations.push(
         `${definition.shortName} quase nao e escolhido (${formatPercent(
           tower.buildShare
@@ -1309,7 +1410,7 @@ const createRecommendations = (report: BalanceSimulationReport): string[] => {
       );
     }
 
-    if (tower.buildShare > 0.44) {
+    if (tower.buildShare > 0.16) {
       recommendations.push(
         `${definition.shortName} domina escolhas (${formatPercent(
           tower.buildShare
