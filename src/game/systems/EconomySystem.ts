@@ -1,7 +1,13 @@
 import type { GameSystem } from "./GameSystem";
 import { GameRegistry } from "../GameRegistry";
-import { KILL_REWARD_MULTIPLIER } from "../config/constants";
+import {
+  INCOME_TOWER_HARD_CAP,
+  INCOME_TOWER_REWARD_SCALE,
+  INCOME_TOWER_SOFT_CAP,
+  KILL_REWARD_MULTIPLIER
+} from "../config/constants";
 import { getPlayerClassDefinition } from "../data/playerClasses";
+import { getTowerDefinition } from "../data/towers";
 import type { PlayerId } from "../models/types";
 
 export class EconomySystem implements GameSystem {
@@ -31,6 +37,23 @@ export class EconomySystem implements GameSystem {
     return this.grantTeamCredits(amountPerPlayer, 1);
   }
 
+  rewardIncome(ownerId: PlayerId, baseAmount: number, sourceTowerId: string): number {
+    const incomeTowers = this.registry.state.towers.filter(
+      (tower) =>
+        tower.ownerId === ownerId &&
+        getTowerDefinition(tower.typeId).effect === "income"
+    );
+    const towerRank = incomeTowers.findIndex((tower) => tower.id === sourceTowerId);
+
+    if (towerRank >= INCOME_TOWER_HARD_CAP) {
+      return 0;
+    }
+
+    const capMultiplier = towerRank >= INCOME_TOWER_SOFT_CAP ? 0.52 : 1;
+
+    return this.grantTeamCredits(baseAmount, INCOME_TOWER_REWARD_SCALE * capMultiplier);
+  }
+
   getTeamRewardMultiplier(): number {
     const state = this.registry.state;
     const p1Multiplier =
@@ -44,13 +67,18 @@ export class EconomySystem implements GameSystem {
   }
 
   private grantTeamCredits(amount: number, scale: number): number {
-    const credits = Math.ceil(amount * scale * this.getTeamRewardMultiplier());
+    if (amount <= 0 || scale <= 0) {
+      return 0;
+    }
+
+    const credits = Math.max(1, Math.floor(amount * scale * this.getTeamRewardMultiplier()));
 
     this.registry.state.economies.p1.credits += credits;
     this.registry.state.economies.p2.credits += credits;
 
     return credits;
   }
+
 
   rewardBossSigils(amount: number): void {
     this.registry.state.skillTrees.p1.bossSigils += amount;

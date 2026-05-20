@@ -1,4 +1,7 @@
 import {
+  INCOME_TOWER_HARD_CAP,
+  INCOME_TOWER_REWARD_SCALE,
+  INCOME_TOWER_SOFT_CAP,
   KILL_REWARD_MULTIPLIER,
   WAVE_AUTO_START_MS,
   WAVE_COMPLETION_BONUS_PER_PLAYER
@@ -853,19 +856,45 @@ export class TowerDefenseEnv {
       const ticks = Math.max(0, Math.floor(waveDurationMs / interval));
 
       if (ticks > 0) {
-        this.rewardTeam(ticks * (definition.incomePerTick ?? 1), 1);
+        const capMultiplier = this.getIncomeTowerCapMultiplier(tower);
+
+        if (capMultiplier > 0) {
+          this.rewardTeam(
+            ticks * (definition.incomePerTick ?? 1),
+            INCOME_TOWER_REWARD_SCALE * capMultiplier
+          );
+        }
       }
     }
   }
 
   private rewardTeam(amount: number, scale: number): number {
-    const credits = Math.max(0, Math.ceil(amount * scale * this.getTeamRewardMultiplier()));
+    if (amount <= 0 || scale <= 0) {
+      return 0;
+    }
+
+    const credits = Math.max(1, Math.floor(amount * scale * this.getTeamRewardMultiplier()));
 
     for (const playerId of playerIds) {
       this.stateInternal.players[playerId].credits += credits;
     }
 
     return credits;
+  }
+
+  private getIncomeTowerCapMultiplier(tower: HeadlessTowerState): number {
+    const incomeTowers = this.stateInternal.towers.filter((candidate) => {
+      const definition = getTowerDefinition(candidate.typeId);
+
+      return candidate.ownerId === tower.ownerId && definition.effect === "income";
+    });
+    const towerRank = incomeTowers.findIndex((candidate) => candidate.id === tower.id);
+
+    if (towerRank >= INCOME_TOWER_HARD_CAP) {
+      return 0;
+    }
+
+    return towerRank >= INCOME_TOWER_SOFT_CAP ? 0.52 : 1;
   }
 
   private getTeamRewardMultiplier(): number {

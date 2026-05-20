@@ -18,7 +18,7 @@ import {
   toHexColor
 } from "../design/gameDesignSystem";
 import { GameRegistry } from "../GameRegistry";
-import type { GameState, PlayerId, TowerEffect, TowerEntity, TowerRuntimeStats } from "../models/types";
+import type { GameState, PlayerId, TowerEffect, TowerEntity } from "../models/types";
 import { RunTelemetry } from "../telemetry/RunTelemetry";
 import { gridKey, isGridOnPath, isInsideGrid } from "../utils/grid";
 import {
@@ -37,8 +37,8 @@ type HudButton = {
 };
 
 const statusPanels: Record<PlayerId, { x: number; y: number }> = {
-  p1: { x: 10, y: 82 },
-  p2: { x: GAME_WIDTH - 258, y: 82 }
+  p1: { x: 8, y: 82 },
+  p2: { x: GAME_WIDTH - gameDesign.hud.sidePanelWidth - 8, y: 82 }
 };
 
 const debugButton = { x: GAME_WIDTH - 164, y: 12, width: 150, height: 32 };
@@ -72,18 +72,19 @@ export class PhaserHudRenderer {
     }
 
     this.drawTimeline(state);
-    this.drawCountdown(state);
 
     if (state.phase === "playing" || state.phase === "paused") {
       this.drawPlayerStatus(state, "p1");
       this.drawContextPanel(state, "p1");
-      this.drawQuickbar(state, "p1");
 
       if (state.sessionMode === "solo-ai") {
+        this.drawQuickbar(state, "p1");
         this.drawAiPanel(state);
       } else {
         this.drawPlayerStatus(state, "p2");
-        this.drawMiniQuickbar(state, "p2");
+        this.drawContextPanel(state, "p2");
+        this.drawSideQuickbar(state, "p1");
+        this.drawSideQuickbar(state, "p2");
       }
     }
 
@@ -116,12 +117,44 @@ export class PhaserHudRenderer {
     const width = gameDesign.hud.timelineWidth;
     const height = gameDesign.hud.timelineHeight;
     const x = (GAME_WIDTH - width) / 2;
-    const y = 10;
+    const y = 12;
     const timeline = getWaveTimelineWindow(state.wave.currentWaveIndex, 10);
-    const nodeGap = 38;
-    const startX = x + 84;
+    const nodeGap = 30;
+    const nodeY = y + 25;
+    const startX = x + 286;
+    const routes = state.wave.snapshot.activePathIndexes.length;
+    const seconds = Math.max(0, state.wave.nextWaveInMs / 1000);
+    const statusLabel = state.wave.active
+      ? wave.isBoss
+        ? "BOSS ATIVO"
+        : "COMBATE"
+      : wave.isBoss
+        ? "BOSS EM PREPARO"
+        : "PREPARACAO";
+    const timerLabel = state.wave.active ? "VIVOS" : "COMECA EM";
+    const timerValue = state.wave.active
+      ? `${state.wave.snapshot.aliveEnemies}`
+      : `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
+    const detail = state.wave.active ? `${routes || 1} rota(s) ativa(s)` : "";
+    const accent = wave.isBoss ? gameDesign.color.pink : gameDesign.color.cyan;
 
-    this.panel(x, y, width, height, wave.isBoss ? gameDesign.color.pink : gameDesign.color.cyan, 0.78);
+    this.panel(x, y, width, height, accent, 0.82);
+    this.graphics.fillStyle(accent, 0.06);
+    this.graphics.fillRoundedRect(x + 2, y + 2, 248, height - 4, 8);
+    this.textRole(x + 18, y + 12, statusLabel, "label", toHexColor(accent));
+    this.textRole(x + 18, y + 35, wave.name, "title", "#edf7ff", 0, 218);
+    this.drawReadyChip(x + 18, y + 62, "P1", state.wave.readyPlayers.p1, playerColor("p1"));
+    this.drawReadyChip(
+      x + 108,
+      y + 62,
+      state.sessionMode === "solo-ai" ? "IA" : "P2",
+      state.sessionMode === "solo-ai" || state.wave.readyPlayers.p2,
+      playerColor("p2")
+    );
+
+    if (detail) {
+      this.textRole(x + 196, y + 65, detail, "meta", "#a9bac6", 0, 48);
+    }
 
     for (let index = 0; index < timeline.length; index += 1) {
       const nodeWave = timeline[index].wave;
@@ -133,25 +166,27 @@ export class PhaserHudRenderer {
 
       if (index > 0) {
         this.graphics.lineStyle(2, completed ? gameDesign.color.cyan : 0x203646, completed ? 0.5 : 0.28);
-        this.graphics.lineBetween(nodeX - nodeGap + 10, y + 20, nodeX - 10, y + 20);
+        this.graphics.lineBetween(nodeX - nodeGap + 9, nodeY, nodeX - 9, nodeY);
       }
 
       this.graphics.fillStyle(completed || current ? color : 0x07131e, current ? 0.96 : 0.78);
-      this.graphics.fillCircle(nodeX, y + 20, nodeWave.isBoss ? 9 : 7);
+      this.graphics.fillCircle(nodeX, nodeY, nodeWave.isBoss ? 8 : 6);
       this.graphics.lineStyle(current ? 3 : 1, color, current ? 0.95 : 0.46);
-      this.graphics.strokeCircle(nodeX, y + 20, nodeWave.isBoss ? 12 : 9);
-      this.textRole(nodeX, y + 35, `${waveIndex + 1}`, "micro", current ? "#edf7ff" : "#6f8492", 0.5);
+      this.graphics.strokeCircle(nodeX, nodeY, nodeWave.isBoss ? 11 : 8);
+      this.textRole(nodeX, nodeY + 15, `${waveIndex + 1}`, "micro", current ? "#edf7ff" : "#6f8492", 0.5);
     }
 
-    const status = this.getWaveStatus(state);
-    const routes = state.wave.snapshot.activePathIndexes.length;
+    this.drawWaveMetricChip(x + 286, y + 56, "threat", "Ameaca", `${getWaveThreat(wave)}`, wave.isBoss ? gameDesign.color.pink : 0xffd36d);
+    this.drawWaveMetricChip(x + 350, y + 56, "route", "Rotas", `${routes || "-"}`, 0x83f3ff);
+    this.drawWaveMetricChip(x + 414, y + 56, "enemy", "Vivos", `${state.wave.snapshot.aliveEnemies}`, 0xff6d8b);
+    this.drawWaveMetricChip(x + 478, y + 56, "spawn", "Fila", `${state.wave.snapshot.totalSpawnsRemaining}`, 0xb4ff72);
 
-    this.textRole(x + 14, y + 8, status, "label", wave.isBoss ? "#ff8db4" : "#83f3ff");
-    this.textRole(x + 14, y + 31, wave.name, "title", "#edf7ff", 0, 212);
-    this.drawMiniStat(x + width - 255, y + 10, "threat", "Ameaca", `${getWaveThreat(wave)}`, wave.isBoss ? gameDesign.color.pink : 0xffd36d);
-    this.drawMiniStat(x + width - 190, y + 10, "route", "Rotas", `${routes || "-"}`, 0x83f3ff);
-    this.drawMiniStat(x + width - 125, y + 10, "enemy", "Vivos", `${state.wave.snapshot.aliveEnemies}`, 0xff6d8b);
-    this.drawMiniStat(x + width - 60, y + 10, "spawn", "Fila", `${state.wave.snapshot.totalSpawnsRemaining}`, 0xb4ff72);
+    this.graphics.fillStyle(0x020712, 0.58);
+    this.graphics.fillRoundedRect(x + width - 130, y + 13, 108, 62, 8);
+    this.graphics.lineStyle(1, accent, 0.28);
+    this.graphics.strokeRoundedRect(x + width - 130, y + 13, 108, 62, 8);
+    this.textRole(x + width - 24, y + 21, timerLabel, "meta", "#a9bac6", 1);
+    this.text(x + width - 24, y + 35, timerValue, 34, "#edf7ff", "900", 1);
   }
 
   private drawCountdown(state: GameState): void {
@@ -199,8 +234,8 @@ export class PhaserHudRenderer {
 
   private drawContextPanel(state: GameState, playerId: PlayerId): void {
     const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
-    const x = 10;
-    const y = 232;
+    const x = statusPanels[playerId].x;
+    const y = 228;
     const width = gameDesign.hud.sidePanelWidth;
     const height = gameDesign.hud.contextPanelHeight;
     const cursor = state.cursors[playerId];
@@ -214,6 +249,25 @@ export class PhaserHudRenderer {
     const title = towerUnderCursor ? "Torre no cursor" : "Torre selecionada";
     const status = this.getBuildStatus(state, playerId, selectedTower.id, selectedCost, towerUnderCursor);
 
+    if (!towerUnderCursor && state.sessionMode === "solo-ai") {
+      this.panel(x, y, width, height, status.color, 0.78);
+      this.textRole(x + 14, y + 12, "Construcao", "label", toHexColor(status.color));
+      this.textRole(x + width - 14, y + 12, `${selectedCost} creditos`, "label", "#ffe39d", 1);
+      this.drawEffectIcon(selectedTower.effect, x + 30, y + 54, 17, selectedTower.color, 0.95);
+      this.textRole(x + 58, y + 40, selectedTower.shortName, "title", "#edf7ff", 0, 158);
+      this.textRole(x + 58, y + 64, selectedTower.role, "body", "#a9bac6", 0, 158);
+      this.drawAbilitySummary(x + 14, y + 88, width - 28, stats, selectedTower.color);
+
+      this.graphics.fillStyle(status.color, 0.08);
+      this.graphics.fillRoundedRect(x + 14, y + 128, width - 28, 62, 8);
+      this.graphics.lineStyle(1, status.color, 0.3);
+      this.graphics.strokeRoundedRect(x + 14, y + 128, width - 28, 62, 8);
+      this.textRole(x + 28, y + 142, status.title, "label", toHexColor(status.color), 0, width - 56);
+      this.textRole(x + 28, y + 162, status.detail, "body", "#c4d4df", 0, width - 56);
+      this.textRole(x + 14, y + 202, "F: detalhes da torre no cursor.", "micro", "#8ea4b3");
+      return;
+    }
+
     this.panel(x, y, width, height, status.color, 0.78);
     this.textRole(x + 14, y + 12, title, "label", toHexColor(status.color));
     this.textRole(
@@ -224,27 +278,35 @@ export class PhaserHudRenderer {
       "#ffe39d",
       1
     );
-    this.drawEffectIcon(stats.effect, x + 32, y + 52, 18, towerUnderCursor ? getTowerDefinition(towerUnderCursor.typeId).color : selectedTower.color, 0.95);
-    this.textRole(x + 62, y + 38, stats.shortName, "title", "#edf7ff", 0, 172);
-    this.textRole(x + 62, y + 62, stats.effectLabel, "body", "#a9bac6", 0, 172);
-    this.drawStatPill(x + 14, y + 96, "damage", "Dano/s", stats.effect === "income" ? "--" : stats.dps.toFixed(1), playerColor(playerId));
-    this.drawStatPill(x + 96, y + 96, "range", "Alcance", `${Math.round(stats.range)}`, 0xb4ff72);
-    this.drawStatPill(x + 178, y + 96, "cooldown", "Recarga", `${(stats.cooldownMs / 1000).toFixed(1)}s`, 0xffd36d);
-    this.textRole(x + 14, y + 144, status.title, "label", toHexColor(status.color));
-    this.textRole(x + 14, y + 162, status.detail, "body", "#c4d4df", 0, width - 28);
+    this.drawEffectIcon(stats.effect, x + 30, y + 52, 17, towerUnderCursor ? getTowerDefinition(towerUnderCursor.typeId).color : selectedTower.color, 0.95);
+    this.textRole(x + 58, y + 38, stats.shortName, "title", "#edf7ff", 0, 166);
+    this.textRole(x + 58, y + 62, stats.effectLabel, "body", "#a9bac6", 0, 166);
+    this.drawAbilitySummary(x + 14, y + 82, width - 28, stats, towerUnderCursor ? getTowerDefinition(towerUnderCursor.typeId).color : selectedTower.color);
+    this.drawStatPill(x + 10, y + 112, "damage", "Dano/s", stats.effect === "income" ? "renda" : stats.dps.toFixed(1), playerColor(playerId));
+    this.drawStatPill(x + 84, y + 112, "range", "Alcance", `${Math.round(stats.range)}`, 0xb4ff72);
+    this.drawStatPill(x + 158, y + 112, "cooldown", "Recarga", `${(stats.cooldownMs / 1000).toFixed(1)}s`, 0xffd36d);
+    this.textRole(x + 14, y + 160, status.title, "label", toHexColor(status.color));
+    this.textRole(x + 14, y + 178, status.detail, "body", "#c4d4df", 0, width - 28);
 
     if (towerUnderCursor) {
+      const xpRatio = stats.skillPoints > 0 ? 1 : Phaser.Math.Clamp(towerUnderCursor.xp / towerUnderCursor.xpToNext, 0, 1);
+
+      this.drawProgressLine(x + 14, y + 196, width - 28, xpRatio, playerClass.accent);
+      this.textRole(
+        x + 14,
+        y + 204,
+        `XP ${towerUnderCursor.xp}/${towerUnderCursor.xpToNext}  |  pontos ${stats.skillPoints}`,
+        "micro",
+        "#edf7ff"
+      );
       this.textRole(
         x + width - 14,
-        y + 144,
+        y + 204,
         `${stats.kills} elim.  ${Math.round(stats.damageDealt)} dano`,
         "micro",
         "#edf7ff",
         1
       );
-      if (stats.branchSummary.length > 0) {
-        this.textRole(x + width - 14, y + 184, stats.branchSummary.join(" / "), "micro", "#b4ff72", 1);
-      }
     }
   }
 
@@ -252,71 +314,107 @@ export class PhaserHudRenderer {
     const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
     const towers = getTowerDefinitionsForClass(state.playerClasses[playerId]);
     const selected = state.cursors[playerId].selectedTowerIndex % towers.length;
-    const x = 268;
-    const y = GAME_HEIGHT - 92;
-    const width = 744;
+    const selectedTower = towers[selected];
+    const preview = calculateTowerPreviewStats(state, playerId, selectedTower.id);
+    const selectedCost = calculateTowerCost(state, playerId, selectedTower.id);
+    const canBuildSelected = state.economies[playerId].credits >= selectedCost;
+    const x = 248;
+    const y = GAME_HEIGHT - 146;
+    const width = 784;
     const height = gameDesign.hud.quickbarHeight;
+    const shopX = x + 16;
+    const shopY = y + 14;
+    const slotY = y + 38;
+    const slotWidth = 48;
+    const slotHeight = 56;
+    const slotGap = 6;
+    const infoX = x + 368;
+    const infoY = y + 14;
+    const infoWidth = width - 386;
+    const costColor = canBuildSelected ? "#ffe39d" : "#ff8db4";
+    const abilityDetail = preview.effectDetails.join(" | ");
 
-    this.panel(x, y, width, height, playerClass.accent, 0.78);
-    this.textRole(x + 16, y + 10, "Torres", "label", toHexColor(playerClass.accent));
-
-    const slotSize = 58;
-    const gap = 8;
-    const startX = x + 74;
+    this.panel(x, y, width, height, playerClass.accent, 0.92);
+    this.textRole(shopX, shopY, "Torres", "label", toHexColor(playerClass.accent));
+    this.textRole(shopX + 56, shopY, playerClass.shortName, "micro", "#8ea4b3", 0, 160);
 
     towers.forEach((tower, index) => {
-      const slotX = startX + index * (slotSize + gap);
+      const slotX = shopX + index * (slotWidth + slotGap);
       const isSelected = index === selected;
       const cost = calculateTowerCost(state, playerId, tower.id);
       const canBuy = state.economies[playerId].credits >= cost;
 
-      this.graphics.fillStyle(isSelected ? tower.color : 0x07131e, isSelected ? 0.22 : 0.72);
-      this.graphics.fillRoundedRect(slotX, y + 10, slotSize, 60, 8);
-      this.graphics.lineStyle(isSelected ? 2 : 1, canBuy ? tower.color : 0x6f8492, isSelected ? 0.92 : 0.42);
-      this.graphics.strokeRoundedRect(slotX, y + 10, slotSize, 60, 8);
-      this.drawEffectIcon(tower.effect, slotX + slotSize / 2, y + 28, 14, canBuy ? tower.color : 0x6f8492, canBuy ? 0.95 : 0.46);
-      this.drawSmallIcon("credits", slotX + 17, y + 55, canBuy ? gameDesign.color.gold : 0x6f8492);
-      this.textRole(slotX + slotSize - 8, y + 49, `${cost}`, "label", canBuy ? "#ffe39d" : "#6f8492", 1);
-      this.textRole(slotX + 8, y + 14, `${index + 1}`, "micro", canBuy ? "#edf7ff" : "#6f8492");
-
-      if (isSelected) {
-        this.graphics.fillStyle(tower.color, 0.9);
-        this.graphics.fillTriangle(slotX + 18, y + 5, slotX + 34, y + 5, slotX + 26, y);
-      }
+      this.drawTowerSlot(
+        slotX,
+        slotY,
+        slotWidth,
+        slotHeight,
+        index + 1,
+        tower.effect,
+        tower.color,
+        cost,
+        canBuy,
+        isSelected
+      );
     });
 
-    const selectedTower = towers[selected];
-    const preview = calculateTowerPreviewStats(state, playerId, selectedTower.id);
-    this.textRole(x + width - 18, y + 11, selectedTower.shortName, "title", "#edf7ff", 1);
-    this.textRole(x + width - 18, y + 35, selectedTower.role, "meta", "#a9bac6", 1);
-    this.drawTinyStat(x + width - 214, y + 53, "damage", "Dano/s", preview.effect === "income" ? "--" : preview.dps.toFixed(1), playerColor(playerId));
-    this.drawInputGlyphs(x + width - 176, y + 55, playerId);
+    this.graphics.lineStyle(1, 0x31556a, 0.42);
+    this.graphics.lineBetween(infoX - 18, y + 16, infoX - 18, y + height - 16);
+
+    this.drawEffectIcon(selectedTower.effect, infoX + 20, infoY + 22, 14, selectedTower.color, 0.95);
+    this.textRole(infoX + 46, infoY + 2, selectedTower.shortName, "title", "#edf7ff", 0, 152);
+    this.textRole(infoX + 46, infoY + 24, selectedTower.role, "meta", "#a9bac6", 0, 152);
+    this.textRole(infoX + infoWidth, infoY + 4, `${selectedCost} creditos`, "label", costColor, 1);
+    this.textRole(infoX + infoWidth, infoY + 22, canBuildSelected ? "Disponivel" : "Creditos insuficientes", "micro", costColor, 1);
+
+    this.textRole(infoX, infoY + 52, this.shorten(selectedTower.summary, 68), "body", "#d8e6ef", 0, 236);
+    this.drawAbilityTag(infoX + 250, infoY + 47, preview.effectLabel, this.shorten(abilityDetail, 32), selectedTower.color, 132);
+
+    this.drawTowerStatTile(infoX, infoY + 88, 128, "damage", "Dano por segundo", preview.effect === "income" ? "renda" : preview.dps.toFixed(1), playerColor(playerId));
+    this.drawTowerStatTile(infoX + 138, infoY + 88, 100, "range", "Alcance", `${Math.round(preview.range)}`, 0xb4ff72);
+    this.drawTowerStatTile(infoX + 250, infoY + 88, 108, "cooldown", "Recarga", `${(preview.cooldownMs / 1000).toFixed(1)}s`, 0xffd36d);
+
+    this.drawControlRibbon(shopX, y + 102, playerId);
   }
 
-  private drawMiniQuickbar(state: GameState, playerId: PlayerId): void {
+  private drawSideQuickbar(state: GameState, playerId: PlayerId): void {
     const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
-    const x = GAME_WIDTH - 258;
-    const y = 218;
+    const x = statusPanels[playerId].x;
+    const y = GAME_HEIGHT - 126;
+    const width = gameDesign.hud.sidePanelWidth;
+    const height = 112;
     const towers = getTowerDefinitionsForClass(state.playerClasses[playerId]);
     const selected = state.cursors[playerId].selectedTowerIndex % towers.length;
+    const selectedTower = towers[selected];
+    const preview = calculateTowerPreviewStats(state, playerId, selectedTower.id);
 
-    this.panel(x, y, gameDesign.hud.sidePanelWidth, 92, playerClass.accent, 0.76);
-    this.textRole(x + 14, y + 10, "Torres do P2", "label", toHexColor(playerClass.accent));
+    this.panel(x, y, width, height, playerClass.accent, 0.8);
+    this.textRole(x + 14, y + 10, `${playerId.toUpperCase()} torres`, "label", toHexColor(playerClass.accent));
+    this.textRole(x + width - 14, y + 10, selectedTower.shortName, "label", "#edf7ff", 1);
     towers.slice(0, 6).forEach((tower, index) => {
-      const slotX = x + 14 + index * 35;
+      const slotSize = 30;
+      const slotX = x + 12 + index * 36;
+      const isSelected = index === selected;
+      const cost = calculateTowerCost(state, playerId, tower.id);
+      const canBuy = state.economies[playerId].credits >= cost;
 
-      this.graphics.fillStyle(index === selected ? tower.color : 0x07131e, index === selected ? 0.2 : 0.65);
-      this.graphics.fillRoundedRect(slotX, y + 38, 28, 28, 6);
-      this.graphics.lineStyle(index === selected ? 2 : 1, tower.color, index === selected ? 0.82 : 0.34);
-      this.graphics.strokeRoundedRect(slotX, y + 38, 28, 28, 6);
-      this.drawEffectIcon(tower.effect, slotX + 14, y + 52, 8, tower.color, 0.9);
+      this.graphics.fillStyle(isSelected ? tower.color : 0x07131e, isSelected ? 0.2 : 0.65);
+      this.graphics.fillRoundedRect(slotX, y + 34, slotSize, 34, 6);
+      this.graphics.lineStyle(isSelected ? 2 : 1, canBuy ? tower.color : 0x6f8492, isSelected ? 0.88 : 0.34);
+      this.graphics.strokeRoundedRect(slotX, y + 34, slotSize, 34, 6);
+      this.drawEffectIcon(tower.effect, slotX + slotSize / 2, y + 48, 8, canBuy ? tower.color : 0x6f8492, canBuy ? 0.9 : 0.42);
+      this.textRole(slotX + slotSize / 2, y + 58, `${cost}`, "micro", canBuy ? "#ffe39d" : "#6f8492", 0.5);
     });
+
+    this.drawTinyStat(x + 14, y + 76, "damage", "Dano por segundo", preview.effect === "income" ? "renda" : preview.dps.toFixed(1), playerColor(playerId));
+    this.textRole(x + width - 14, y + 76, selectedTower.role, "meta", "#a9bac6", 1, 108);
+    this.drawCompactControls(x + 14, y + 96, playerId);
   }
 
   private drawAiPanel(state: GameState): void {
     const playerClass = getPlayerClassDefinition(state.playerClasses.p2);
     const decision = state.aiPartner.lastDecision;
-    const x = GAME_WIDTH - 258;
+    const x = statusPanels.p2.x;
     const y = 82;
     const width = gameDesign.hud.sidePanelWidth;
     const height = 220;
@@ -694,12 +792,12 @@ export class PhaserHudRenderer {
 
   private drawMetricIcon(x: number, y: number, icon: GameUiIconId, label: string, value: string, color: number): void {
     this.graphics.fillStyle(0x020712, 0.62);
-    this.graphics.fillRoundedRect(x - 4, y - 4, 70, 36, 7);
+    this.graphics.fillRoundedRect(x - 4, y - 4, 66, 36, 7);
     this.graphics.lineStyle(1, color, 0.32);
-    this.graphics.strokeRoundedRect(x - 4, y - 4, 70, 36, 7);
+    this.graphics.strokeRoundedRect(x - 4, y - 4, 66, 36, 7);
     this.drawSmallIcon(icon, x + 10, y + 13, color);
-    this.textRole(x + 64, y + 3, value, "stat", "#edf7ff", 1);
-    this.textRole(x + 34, y + 22, label, "micro", "#8ea4b3", 0.5);
+    this.textRole(x + 60, y + 3, value, "stat", "#edf7ff", 1);
+    this.textRole(x + 32, y + 22, label, "micro", "#8ea4b3", 0.5);
   }
 
   private drawMiniStat(x: number, y: number, icon: GameUiIconId, label: string, value: string, color: number): void {
@@ -710,6 +808,52 @@ export class PhaserHudRenderer {
     this.drawSmallIcon(icon, x + 12, y + 13, color);
     this.textRole(x + 50, y + 5, value, "stat", "#edf7ff", 1);
     this.textRole(x + 29, y + 25, label, "micro", "#8ea4b3", 0.5);
+  }
+
+  private drawWaveMetricChip(
+    x: number,
+    y: number,
+    icon: GameUiIconId,
+    label: string,
+    value: string,
+    color: number
+  ): void {
+    this.graphics.fillStyle(0x020712, 0.52);
+    this.graphics.fillRoundedRect(x, y, 58, 24, 6);
+    this.graphics.lineStyle(1, color, 0.28);
+    this.graphics.strokeRoundedRect(x, y, 58, 24, 6);
+    this.drawSmallIcon(icon, x + 12, y + 12, color);
+    this.textRole(x + 52, y + 3, value, "label", "#edf7ff", 1);
+    this.textRole(x + 29, y + 14, label, "micro", "#8ea4b3", 0.5);
+  }
+
+  private drawReadyChip(
+    x: number,
+    y: number,
+    label: string,
+    ready: boolean,
+    color: number
+  ): void {
+    const chipColor = ready ? color : gameDesign.color.gold;
+    const statusText = ready ? "OK" : "FALTA";
+
+    this.graphics.fillStyle(ready ? color : 0x020712, ready ? 0.18 : 0.58);
+    this.graphics.fillRoundedRect(x, y, 80, 20, 6);
+    this.graphics.lineStyle(1, chipColor, ready ? 0.62 : 0.32);
+    this.graphics.strokeRoundedRect(x, y, 80, 20, 6);
+    this.graphics.lineStyle(2, chipColor, ready ? 0.9 : 0.54);
+
+    if (ready) {
+      this.graphics.strokeCircle(x + 11, y + 10, 6);
+      this.graphics.lineBetween(x + 8, y + 10, x + 11, y + 13);
+      this.graphics.lineBetween(x + 11, y + 13, x + 16, y + 6);
+    } else {
+      this.graphics.strokeCircle(x + 11, y + 10, 6);
+      this.graphics.lineBetween(x + 7, y + 10, x + 15, y + 10);
+    }
+
+    this.text(x + 24, y + 5, label, 9, ready ? "#edf7ff" : "#ffe39d", "900");
+    this.text(x + 74, y + 5, statusText, 9, ready ? "#edf7ff" : "#ffe39d", "900", 1);
   }
 
   private drawHealthStrip(x: number, y: number, width: number, ratio: number): void {
@@ -725,18 +869,131 @@ export class PhaserHudRenderer {
 
   private drawStatPill(x: number, y: number, icon: GameUiIconId, label: string, value: string, color: number): void {
     this.graphics.fillStyle(0x020712, 0.62);
-    this.graphics.fillRoundedRect(x, y, 72, 40, 7);
+    this.graphics.fillRoundedRect(x, y, 66, 40, 7);
     this.graphics.lineStyle(1, color, 0.32);
-    this.graphics.strokeRoundedRect(x, y, 72, 40, 7);
+    this.graphics.strokeRoundedRect(x, y, 66, 40, 7);
     this.drawSmallIcon(icon, x + 12, y + 14, color);
-    this.textRole(x + 66, y + 6, value, "label", "#edf7ff", 1);
-    this.textRole(x + 36, y + 25, label, "micro", "#8ea4b3", 0.5);
+    this.textRole(x + 60, y + 6, value, "label", "#edf7ff", 1);
+    this.textRole(x + 34, y + 25, label, "micro", "#8ea4b3", 0.5);
+  }
+
+  private drawTowerSlot(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    index: number,
+    effect: TowerEffect,
+    color: number,
+    cost: number,
+    canBuy: boolean,
+    selected: boolean
+  ): void {
+    const lineColor = canBuy ? color : 0x5c6d78;
+    const textColor = canBuy ? "#edf7ff" : "#6f8492";
+    const costColor = canBuy ? "#ffe39d" : "#6f8492";
+
+    this.graphics.fillStyle(selected ? color : 0x07131e, selected ? 0.2 : 0.72);
+    this.graphics.fillRoundedRect(x, y, width, height, 8);
+    this.graphics.lineStyle(selected ? 2 : 1, lineColor, selected ? 0.92 : 0.42);
+    this.graphics.strokeRoundedRect(x, y, width, height, 8);
+
+    if (selected) {
+      this.graphics.fillStyle(color, 0.9);
+      this.graphics.fillRoundedRect(x + 5, y + 5, width - 10, 3, 2);
+    }
+
+    this.textRole(x + 7, y + 8, `${index}`, "micro", textColor);
+    this.drawEffectIcon(effect, x + width / 2, y + 28, 12, canBuy ? color : 0x6f8492, canBuy ? 0.95 : 0.42);
+    this.drawSmallIcon("credits", x + 15, y + height - 11, canBuy ? gameDesign.color.gold : 0x6f8492);
+    this.textRole(x + width - 7, y + height - 16, `${cost}`, "micro", costColor, 1);
+  }
+
+  private drawTowerStatTile(
+    x: number,
+    y: number,
+    width: number,
+    icon: GameUiIconId,
+    label: string,
+    value: string,
+    color: number
+  ): void {
+    this.graphics.fillStyle(0x020712, 0.58);
+    this.graphics.fillRoundedRect(x, y, width, 28, 6);
+    this.graphics.lineStyle(1, color, 0.26);
+    this.graphics.strokeRoundedRect(x, y, width, 28, 6);
+    this.drawSmallIcon(icon, x + 13, y + 14, color);
+    this.textRole(x + 30, y + 3, value, "label", "#edf7ff");
+    this.textRole(x + 30, y + 16, label, "micro", "#8ea4b3", 0, width - 36);
   }
 
   private drawTinyStat(x: number, y: number, icon: GameUiIconId, label: string, value: string, color: number): void {
     this.drawSmallIcon(icon, x, y + 5, color);
     this.textRole(x + 18, y, label, "micro", "#8ea4b3");
     this.textRole(x + 18, y + 10, value, "label", "#edf7ff");
+  }
+
+  private drawAbilitySummary(
+    x: number,
+    y: number,
+    width: number,
+    stats: { effectLabel: string; effectDetails: readonly string[] },
+    color: number
+  ): void {
+    this.graphics.fillStyle(color, 0.08);
+    this.graphics.fillRoundedRect(x, y, width, 22, 6);
+    this.graphics.lineStyle(1, color, 0.28);
+    this.graphics.strokeRoundedRect(x, y, width, 22, 6);
+    this.textRole(x + 9, y + 6, stats.effectLabel, "micro", toHexColor(color), 0, 62);
+    this.textRole(x + width - 8, y + 6, stats.effectDetails.join(" | "), "micro", "#edf7ff", 1, width - 78);
+  }
+
+  private drawAbilityTag(
+    x: number,
+    y: number,
+    label: string,
+    detail: string,
+    color: number,
+    width: number
+  ): void {
+    this.graphics.fillStyle(color, 0.1);
+    this.graphics.fillRoundedRect(x, y, width, 34, 7);
+    this.graphics.lineStyle(1, color, 0.32);
+    this.graphics.strokeRoundedRect(x, y, width, 34, 7);
+    this.textRole(x + 10, y + 6, label, "label", toHexColor(color), 0, width - 20);
+    this.textRole(x + 10, y + 20, detail, "micro", "#edf7ff", 0, width - 20);
+  }
+
+  private drawControlRibbon(x: number, y: number, playerId: PlayerId): void {
+    const hints =
+      playerId === "p1"
+        ? [
+            ["Q/E", "Trocar"],
+            ["Espaco", "Construir"],
+            ["F", "Detalhes"],
+            ["R", "Pronto"]
+          ]
+        : [
+            ["PgUp/PgDn", "Trocar"],
+            ["Enter", "Construir"],
+            ["Shift", "Detalhes"],
+            ["Back", "Pronto"]
+          ];
+    let cursorX = x;
+
+    this.textRole(x, y - 12, "Comandos", "micro", "#8ea4b3");
+
+    hints.forEach(([key, label]) => {
+      const width = key.length > 7 ? 76 : key.length > 5 ? 70 : key.length > 2 ? 62 : 54;
+
+      this.graphics.fillStyle(0x020712, 0.58);
+      this.graphics.fillRoundedRect(cursorX, y, width, 26, 6);
+      this.graphics.lineStyle(1, 0x31556a, 0.44);
+      this.graphics.strokeRoundedRect(cursorX, y, width, 26, 6);
+      this.text(cursorX + width / 2, y + 3, key, 8, "#edf7ff", "900", 0.5);
+      this.text(cursorX + width / 2, y + 14, label, 8, "#8ea4b3", "800", 0.5);
+      cursorX += width + 6;
+    });
   }
 
   private drawInputGlyphs(x: number, y: number, playerId: PlayerId): void {
@@ -754,6 +1011,25 @@ export class PhaserHudRenderer {
       this.graphics.strokeRoundedRect(x + offsetX, y, width, 16, 4);
       this.textRole(x + offsetX + width / 2, y + 3, label, "micro", "#8ea4b3", 0.5);
     });
+  }
+
+  private drawCompactControls(x: number, y: number, playerId: PlayerId): void {
+    const labels =
+      playerId === "p1"
+        ? ["Q/E trocar  |  Espaco construir", "F detalhes  |  R pronto"]
+        : ["PgUp/PgDn trocar  |  Enter construir", "Shift detalhes  |  Backspace pronto"];
+
+    this.textRole(x, y - 2, labels[0], "micro", "#a9bac6", 0, gameDesign.hud.sidePanelWidth - 28);
+    this.textRole(x, y + 10, labels[1], "micro", "#a9bac6", 0, gameDesign.hud.sidePanelWidth - 28);
+  }
+
+  private drawProgressLine(x: number, y: number, width: number, ratio: number, color: number): void {
+    const clamped = Phaser.Math.Clamp(ratio, 0, 1);
+
+    this.graphics.fillStyle(0x020712, 0.72);
+    this.graphics.fillRoundedRect(x, y, width, 6, 3);
+    this.graphics.fillStyle(color, 0.9);
+    this.graphics.fillRoundedRect(x, y, width * clamped, 6, 3);
   }
 
   private drawTags(x: number, y: number, tags: readonly string[], color: number): void {
@@ -790,9 +1066,11 @@ export class PhaserHudRenderer {
     const availableCredits = state.economies[playerId].credits;
 
     if (towerUnderCursor) {
+      const inspectKey = playerId === "p1" ? "F" : "Shift";
+
       return {
         title: towerUnderCursor.ownerId === playerId ? "Evolucao disponivel" : "Torre aliada",
-        detail: towerUnderCursor.ownerId === playerId ? "F abre a arvore da torre" : "este espaco ja esta ocupado",
+        detail: towerUnderCursor.ownerId === playerId ? `${inspectKey} abre a arvore da torre` : "este espaco ja esta ocupado",
         color: towerUnderCursor.ownerId === playerId ? gameDesign.color.cyan : 0xffd36d
       };
     }
@@ -810,6 +1088,14 @@ export class PhaserHudRenderer {
         title: `Faltam ${cost - availableCredits} creditos`,
         detail: `${tower.shortName} custa ${cost}; voce tem ${availableCredits}`,
         color: 0xffd36d
+      };
+    }
+
+    if (tower.effect === "income") {
+      return {
+        title: "Renda controlada",
+        detail: `${tower.shortName} gera creditos em combate. So 4 torres de renda contam por jogador.`,
+        color: gameDesign.color.success
       };
     }
 
@@ -1180,6 +1466,14 @@ export class PhaserHudRenderer {
     text.setAlpha(1);
 
     return text;
+  }
+
+  private shorten(value: string, maxLength: number): string {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    return `${value.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
   }
 
   private getText(): Phaser.GameObjects.Text {

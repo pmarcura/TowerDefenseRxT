@@ -19,6 +19,8 @@ import type {
   GameSessionMode,
   GameSettings,
   GameState,
+  GridPoint,
+  MapDefinition,
   PlayerId,
   PlayerNoticeTone,
   PresentationEvent,
@@ -28,7 +30,7 @@ import type {
   TowerUpgradeBranchId
 } from "./models/types";
 import { RunTelemetry } from "./telemetry/RunTelemetry";
-import { gridKey } from "./utils/grid";
+import { clampGrid, gridKey, gridToWorld, isGridOnPath, isInsideGrid } from "./utils/grid";
 
 const SETTINGS_STORAGE_KEY = "aegis-sacra-settings";
 const runTelemetry = RunTelemetry.getInstance();
@@ -337,6 +339,58 @@ export class GameRegistry {
     const tower = availableTowers[cursor.selectedTowerIndex % availableTowers.length];
 
     return tower.id;
+  }
+
+  applyActiveMap(nextMap: MapDefinition): void {
+    const previousMapId = this.state.activeMap.id;
+
+    this.state.activeMap = nextMap;
+
+    const occupied = new Set<string>();
+    let movedTowers = 0;
+
+    for (const tower of this.state.towers) {
+      const nextGrid = this.findNearestBuildableGrid(tower.grid, nextMap, occupied);
+
+      if (gridKey(nextGrid) !== gridKey(tower.grid)) {
+        movedTowers += 1;
+      }
+
+      tower.grid = nextGrid;
+      tower.position = gridToWorld(nextGrid, nextMap);
+      occupied.add(gridKey(nextGrid));
+    }
+
+    for (const playerId of ["p1", "p2"] as const) {
+      const cursor = this.state.cursors[playerId];
+      const clampedGrid = clampGrid(cursor.grid, nextMap);
+
+      cursor.grid =
+        isInsideGrid(clampedGrid, nextMap) &&
+        !isGridOnPath(clampedGrid, nextMap) &&
+        !occupied.has(gridKey(clampedGrid))
+          ? clampedGrid
+          : this.findNearestBuildableGrid(clampedGrid, nextMap, occupied);
+    }
+
+    if (previousMapId !== nextMap.id && movedTowers > 0) {
+      const detail = `${movedTowers} torre(s) reposicionada(s) fora da nova rota`;
+
+      this.pushPlayerNotice("p1", "MAPA EXPANDIU", detail, "warning", 2600);
+      this.pushPlayerNotice("p2", "MAPA EXPANDIU", detail, "warning", 2600);
+    }
+
+    if (previousMapId !== nextMap.id) {
+      this.pushPresentationEvent("level-up", 1100, {
+        cueId: "wave_start",
+        position: {
+          x: nextMap.origin.x + (nextMap.columns * nextMap.tileSize) / 2,
+          y: nextMap.origin.y + (nextMap.rows * nextMap.tileSize) / 2
+        },
+        color: 0x83f3ff,
+        label: nextMap.name
+      });
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -738,5 +792,48 @@ export class GameRegistry {
 
   private getComplementaryClassIndex(selectedClassIndex: number): number {
     return (selectedClassIndex + 1) % playerClassDefinitions.length;
+  }
+
+  private findNearestBuildableGrid(
+    origin: GridPoint,
+    map: MapDefinition,
+    occupied: ReadonlySet<string>
+  ): GridPoint {
+    const clampedOrigin = clampGrid(origin, map);
+
+    if (this.isBuildableGrid(clampedOrigin, map, occupied)) {
+      return clampedOrigin;
+    }
+
+    const maxRadius = Math.max(map.columns, map.rows);
+
+    for (let radius = 1; radius <= maxRadius; radius += 1) {
+      for (let rowOffset = -radius; rowOffset <= radius; rowOffset += 1) {
+        for (let colOffset = -radius; colOffset <= radius; colOffset += 1) {
+          if (Math.abs(rowOffset) !== radius && Math.abs(colOffset) !== radius) {
+            continue;
+          }
+
+          const candidate = {
+            col: clampedOrigin.col + colOffset,
+            row: clampedOrigin.row + rowOffset
+          };
+
+          if (this.isBuildableGrid(candidate, map, occupied)) {
+            return candidate;
+          }
+        }
+      }
+    }
+
+    return clampedOrigin;
+  }
+
+  private isBuildableGrid(
+    grid: GridPoint,
+    map: MapDefinition,
+    occupied: ReadonlySet<string>
+  ): boolean {
+    return isInsideGrid(grid, map) && !isGridOnPath(grid, map) && !occupied.has(gridKey(grid));
   }
 }

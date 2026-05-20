@@ -64,12 +64,12 @@ export const gameDesign = {
     muted: 0.34
   },
   hud: {
-    sidePanelWidth: 252,
+    sidePanelWidth: 238,
     statusPanelHeight: 136,
-    contextPanelHeight: 202,
-    timelineWidth: 586,
-    timelineHeight: 62,
-    quickbarHeight: 80
+    contextPanelHeight: 216,
+    timelineWidth: 720,
+    timelineHeight: 88,
+    quickbarHeight: 136
   },
   tower: {
     spriteSize: 42,

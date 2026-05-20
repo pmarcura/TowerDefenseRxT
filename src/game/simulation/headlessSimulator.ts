@@ -1,4 +1,7 @@
 import {
+  INCOME_TOWER_HARD_CAP,
+  INCOME_TOWER_REWARD_SCALE,
+  INCOME_TOWER_SOFT_CAP,
   KILL_REWARD_MULTIPLIER,
   WAVE_COMPLETION_BONUS_PER_PLAYER
 } from "../config/constants";
@@ -666,7 +669,11 @@ const grantSimTeamCredits = (
   amount: number,
   scale: number
 ): number => {
-  const credits = Math.ceil(amount * scale * getSimTeamRewardMultiplier(run));
+  if (amount <= 0 || scale <= 0) {
+    return 0;
+  }
+
+  const credits = Math.max(1, Math.floor(amount * scale * getSimTeamRewardMultiplier(run)));
 
   run.players.p1.credits += credits;
   run.players.p2.credits += credits;
@@ -1037,9 +1044,32 @@ const grantSimIncomeForWave = (run: SimRunState, wave: WaveDefinition): void => 
     const ticks = Math.max(0, Math.floor(waveDurationMs / interval));
 
     if (ticks > 0) {
-      grantSimTeamCredits(run, ticks * (definition.incomePerTick ?? 1), 1);
+      const capMultiplier = getSimIncomeTowerCapMultiplier(run, tower);
+
+      if (capMultiplier > 0) {
+        grantSimTeamCredits(
+          run,
+          ticks * (definition.incomePerTick ?? 1),
+          INCOME_TOWER_REWARD_SCALE * capMultiplier
+        );
+      }
     }
   }
+};
+
+const getSimIncomeTowerCapMultiplier = (run: SimRunState, tower: SimTower): number => {
+  const incomeTowers = run.towers.filter((candidate) => {
+    const definition = towerDefinitions.find((towerDefinition) => towerDefinition.id === candidate.typeId);
+
+    return candidate.ownerId === tower.ownerId && definition?.effect === "income";
+  });
+  const towerRank = incomeTowers.findIndex((candidate) => candidate.id === tower.id);
+
+  if (towerRank >= INCOME_TOWER_HARD_CAP) {
+    return 0;
+  }
+
+  return towerRank >= INCOME_TOWER_SOFT_CAP ? 0.52 : 1;
 };
 
 const chooseLaneForTower = (

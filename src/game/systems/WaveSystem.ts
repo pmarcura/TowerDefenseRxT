@@ -56,7 +56,7 @@ export class WaveSystem implements GameSystem {
     const state = this.registry.state;
     const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
-    state.activeMap = getMapStage(wave.mapStageIndex);
+    this.registry.applyActiveMap(getMapStage(wave.mapStageIndex));
     state.combatStats.p1.waveDamageDealt = 0;
     state.combatStats.p2.waveDamageDealt = 0;
     this.activeGroups = this.createRuntimeGroups(wave);
@@ -122,7 +122,7 @@ export class WaveSystem implements GameSystem {
 
       state.wave.active = false;
       state.wave.currentWaveIndex = nextWaveIndex;
-      state.activeMap = getMapStage(nextWave.mapStageIndex);
+      this.registry.applyActiveMap(getMapStage(nextWave.mapStageIndex));
       this.registry.clearWaveReadiness(true);
       this.notifyNewRoutes(currentWave, nextWave);
 
@@ -139,7 +139,7 @@ export class WaveSystem implements GameSystem {
     }
 
     state.wave.currentWaveIndex = nextWaveIndex;
-    state.activeMap = getMapStage(nextWave.mapStageIndex);
+    this.registry.applyActiveMap(getMapStage(nextWave.mapStageIndex));
     state.wave.active = false;
     this.registry.clearWaveReadiness(true);
     this.notifyNewRoutes(currentWave, nextWave);

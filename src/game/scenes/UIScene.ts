@@ -54,6 +54,7 @@ export class UIScene extends Phaser.Scene {
     this.drawWaveForecast(state);
     this.drawWaveStartBanner(state);
     this.updateRoundNotice(state);
+    this.feedText.setPosition(GAME_WIDTH / 2, this.getFeedY(state));
     this.feedText.setText(state.messages.map((message) => message.text).join("   "));
     this.updateResultText(state);
     this.hudRenderer.render(state);
@@ -228,6 +229,14 @@ export class UIScene extends Phaser.Scene {
       !state.wave.completed &&
       state.wave.nextWaveInMs > 0
     );
+  }
+
+  private getFeedY(state: GameState): number {
+    if (state.phase === "playing" && state.sessionMode === "solo-ai") {
+      return GAME_HEIGHT - gameDesign.hud.quickbarHeight - 20;
+    }
+
+    return 578;
   }
 
 }

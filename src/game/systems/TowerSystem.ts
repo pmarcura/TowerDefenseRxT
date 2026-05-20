@@ -129,13 +129,20 @@ export class TowerSystem implements GameSystem {
       return true;
     }
 
-    const income = this.economySystem.rewardTeam(definition.incomePerTick ?? 1);
+    const income = this.economySystem.rewardIncome(tower.ownerId, definition.incomePerTick ?? 1, tower.id);
     tower.cooldownMs = definition.incomeIntervalMs ?? definition.cooldownMs;
+
+    if (income <= 0) {
+      return true;
+    }
+
     this.registry.pushPresentationEvent("income", 900, {
       cueId: "income_tick",
       position: { ...tower.position },
       color: definition.glow,
-      label: `+${income} CRED`
+      label: `+${income} CRED`,
+      sourcePlayerId: tower.ownerId,
+      sourceTowerId: tower.id
     });
 
     return true;
