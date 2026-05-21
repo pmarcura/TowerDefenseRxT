@@ -9,6 +9,7 @@ import {
 import { buildPathWorldPoints } from "../utils/grid";
 import { distance, moveToward } from "../utils/math";
 import { getPlayablePlayerIds } from "../utils/players";
+import { balanceConfig } from "../config/BalanceConfig";
 import type { EconomySystem } from "./EconomySystem";
 import type { GameSystem } from "./GameSystem";
 
@@ -28,7 +29,7 @@ export class EnemySystem implements GameSystem {
       position: { x: start.x, y: start.y },
       pathIndexId,
       pathIndex: 0,
-      hp: definition.maxHp,
+      hp: Math.max(1, Math.round(definition.maxHp * balanceConfig.getEnemyHpMultiplier())),
       damageSources: {},
       markMultiplier: 1,
       markTimerMs: 0,

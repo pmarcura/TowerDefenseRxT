@@ -10,6 +10,7 @@ import { getPlayerClassDefinition } from "../data/playerClasses";
 import { getTowerDefinition } from "../data/towers";
 import type { PlayerId } from "../models/types";
 import { getPlayablePlayerIds } from "../utils/players";
+import { balanceConfig } from "../config/BalanceConfig";
 
 export class EconomySystem implements GameSystem {
   constructor(private readonly registry: GameRegistry) {}
@@ -31,11 +32,11 @@ export class EconomySystem implements GameSystem {
   }
 
   reward(_playerId: PlayerId, amount: number): number {
-    return this.grantTeamCredits(amount, KILL_REWARD_MULTIPLIER);
+    return this.grantTeamCredits(amount, balanceConfig.getKillRewardMultiplier(KILL_REWARD_MULTIPLIER));
   }
 
   rewardTeam(amountPerPlayer: number): number {
-    return this.grantTeamCredits(amountPerPlayer, 1);
+    return this.grantTeamCredits(amountPerPlayer, balanceConfig.getWaveCompletionBonus(1.0));
   }
 
   rewardIncome(ownerId: PlayerId, baseAmount: number, sourceTowerId: string): number {

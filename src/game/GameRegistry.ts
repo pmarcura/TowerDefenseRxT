@@ -6,6 +6,7 @@ import {
 import { getMapStage } from "./data/map";
 import { playerClassDefinitions } from "./data/playerClasses";
 import { getWaveDefinition } from "./data/waves";
+import { balanceConfig } from "./config/BalanceConfig";
 import {
   applyTowerAutoBuild,
   getTowerAutoBuildDefinition,
@@ -119,7 +120,7 @@ const createInitialState = (
     presentationEvents: [],
     activeMap: openingMap,
     economies: createPlayerRecord(playerIds, () => ({
-      credits: openingMap.startingCredits,
+      credits: balanceConfig.getStartingCredits(openingMap.startingCredits),
       rewardMultiplier: 1
     })),
     combatStats: createPlayerRecord(playerIds, () => ({

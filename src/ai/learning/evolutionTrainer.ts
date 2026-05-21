@@ -12,6 +12,13 @@ import {
   normalizePolicy,
   type LearningPolicy
 } from "./policy";
+import {
+  extractKnowledge,
+  filterRelevantKnowledge,
+  mergeKnowledge,
+  type AiKnowledge,
+  type EpisodeSnapshot
+} from "./knowledgeFilter";
 
 export type TrainingOptions = {
   seed?: number;
@@ -67,6 +74,8 @@ export type TrainingReport = {
   };
   generations: GenerationSummary[];
   recommendations: string[];
+  /** Distilled AI knowledge extracted from all training episodes */
+  knowledge: AiKnowledge[];
 };
 
 const TRAINING_VERSION = "aegis-self-learning-v1";
@@ -178,6 +187,16 @@ export const trainPolicy = (options: TrainingOptions = {}): TrainingReport => {
     (a, b) => b.fitness - a.fitness
   )[0];
 
+  // Extract knowledge from champion evaluation episodes
+  const championSnapshots = collectEpisodeSnapshots(
+    finalChampion.policy,
+    promotionOptions,
+    promotionSeed,
+    normalized.generations
+  );
+  const rawKnowledge = extractKnowledge(championSnapshots, normalized.generations);
+  const knowledge = filterRelevantKnowledge(rawKnowledge);
+
   return {
     version: TRAINING_VERSION,
     generatedAt: new Date().toISOString(),
@@ -190,7 +209,8 @@ export const trainPolicy = (options: TrainingOptions = {}): TrainingReport => {
       averageWavesCleared: finalChampion.averageWavesCleared - baseline.averageWavesCleared
     },
     generations: generationSummaries,
-    recommendations: createTrainingRecommendations(finalChampion, baseline, generationSummaries)
+    recommendations: createTrainingRecommendations(finalChampion, baseline, generationSummaries),
+    knowledge
   };
 };
 
@@ -271,6 +291,92 @@ export const evaluatePolicy = (
     invariantFailures,
     timeoutRate
   };
+};
+
+/**
+ * Re-run episodes for a policy and capture detailed snapshots for knowledge extraction.
+ * This is separate from evaluatePolicy to avoid slowing down the main training loop.
+ */
+const collectEpisodeSnapshots = (
+  policy: LearningPolicy,
+  options: NormalizedTrainingOptions,
+  seed: number,
+  generation: number
+): EpisodeSnapshot[] => {
+  const rng = new Rng(seed);
+  const episodes = Math.min(options.episodesPerPolicy, 60); // Cap to keep it fast
+  const snapshots: EpisodeSnapshot[] = [];
+
+  for (let episode = 0; episode < episodes; episode += 1) {
+    const episodeSeed = seed + episode * 13_337;
+    const env = new TowerDefenseEnv();
+    let state = env.reset({
+      seed: episodeSeed,
+      players: pickTrainingClasses(rng, episode),
+      targetWaveCount: options.targetWaveCount
+    });
+
+    const towerPlacements: EpisodeSnapshot["towerPlacements"] = [];
+    const economyLog: EpisodeSnapshot["economyLog"] = [];
+    let prevWave = -1;
+    let steps = 0;
+
+    for (; steps < options.maxSteps; steps += 1) {
+      // Track economy at wave transitions
+      if (state.currentWaveIndex !== prevWave) {
+        const totalCredits = Object.values(state.players).reduce((s, p) => s + p.credits, 0);
+        economyLog.push({
+          wave: state.currentWaveIndex,
+          creditsAtStart: totalCredits,
+          creditsSpent: 0,
+          creditsEarned: 0
+        });
+        prevWave = state.currentWaveIndex;
+      }
+
+      const preTowerCount = state.towers.length;
+      const action = choosePolicyAction(policy, state, playerIds, rng);
+      const result = env.step(action);
+
+      // Capture tower placements
+      if (result.state.towers.length > preTowerCount) {
+        const newTower = result.state.towers[result.state.towers.length - 1];
+        towerPlacements.push({
+          wave: state.currentWaveIndex,
+          typeId: newTower.typeId,
+          effect: action.type === "BUILD_TOWER" ? action.towerId : newTower.typeId,
+          grid: { ...newTower.grid },
+          ownerId: newTower.ownerId
+        });
+      }
+
+      // Track economy changes
+      if (economyLog.length > 0) {
+        const lastLog = economyLog[economyLog.length - 1];
+        const totalCredits = Object.values(result.state.players).reduce((s, p) => s + p.credits, 0);
+        const prevCredits = Object.values(state.players).reduce((s, p) => s + p.credits, 0);
+        const delta = totalCredits - prevCredits;
+        if (delta < 0) lastLog.creditsSpent += Math.abs(delta);
+        else lastLog.creditsEarned += delta;
+      }
+
+      state = result.state;
+      if (result.done) break;
+    }
+
+    snapshots.push({
+      seed: episodeSeed,
+      result: getEpisodeResult(state, steps, options.maxSteps),
+      wavesCleared: state.waveLog.filter((w) => w.cleared).length,
+      baseHpRemaining: state.baseHp,
+      steps,
+      towerPlacements,
+      economyLog,
+      policy
+    });
+  }
+
+  return snapshots;
 };
 
 export const formatTrainingMarkdown = (report: TrainingReport): string => {

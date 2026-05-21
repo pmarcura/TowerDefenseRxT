@@ -148,6 +148,11 @@ export const OnlineLobbyOverlay = ({ onClose }: OnlineLobbyOverlayProps) => {
               <button type="button" disabled={!localSeat} onClick={() => onlineClient.setReady(!localSeat?.ready)}>
                 {localSeat?.ready ? "Cancelar pronto" : "Pronto"}
               </button>
+              {isHost && !room.started ? (
+                <button type="button" onClick={() => onlineClient.addBot()}>
+                  Adicionar Bot
+                </button>
+              ) : null}
               <button type="button" disabled={!canStart} onClick={() => onlineClient.startRoom()}>
                 Iniciar
               </button>
@@ -214,16 +219,18 @@ const LobbyRoom = ({
       </header>
       <div className="online-seat-grid">
         {roomSeats.map((seat) => (
-          <LobbySeat key={seat.id} seat={seat} />
+          <LobbySeat key={seat.id} seat={seat} isHost={isHost} />
         ))}
       </div>
     </section>
   </div>
 );
 
-const LobbySeat = ({ seat }: { seat: OnlineRoomSeat }) => {
+const LobbySeat = ({ seat, isHost }: { seat: OnlineRoomSeat; isHost: boolean }) => {
   const playerClass = playerClassDefinitions.find((definition) => definition.id === seat.classId);
   const accent = `#${playerColor(seat.id).toString(16).padStart(6, "0")}`;
+  const isEmpty = seat.kind === "empty";
+  const isBot = seat.kind === "ai-partner";
 
   return (
     <div
@@ -231,13 +238,32 @@ const LobbySeat = ({ seat }: { seat: OnlineRoomSeat }) => {
         "online-seat",
         seat.connected ? "connected" : "empty",
         seat.ready ? "ready" : "",
-        seat.isHost ? "host" : ""
+        seat.isHost ? "host" : "",
+        isBot ? "bot" : ""
       ].join(" ")}
       style={{ "--player-accent": accent } as CSSProperties}
     >
       <span>{seat.id.toUpperCase()}</span>
       <strong>{seat.connected ? seat.displayName : "Livre"}</strong>
       <small>{seat.connected ? playerClass?.shortName ?? "Classe" : "Aguardando"}</small>
+      {isHost && isEmpty ? (
+        <button
+          type="button"
+          className="online-seat-bot-btn"
+          onClick={() => onlineClient.addBot(seat.id)}
+        >
+          Bot
+        </button>
+      ) : null}
+      {isHost && isBot ? (
+        <button
+          type="button"
+          className="online-seat-bot-btn"
+          onClick={() => onlineClient.removeBot(seat.id)}
+        >
+          ✕
+        </button>
+      ) : null}
     </div>
   );
 };

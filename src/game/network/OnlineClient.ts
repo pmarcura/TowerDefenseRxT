@@ -125,6 +125,14 @@ class OnlineClient {
     this.send({ type: "start-room" });
   }
 
+  addBot(seatId?: string): void {
+    this.send({ type: "add-bot", seatId });
+  }
+
+  removeBot(seatId: string): void {
+    this.send({ type: "remove-bot", seatId });
+  }
+
   sendGameAction(action: GameAction): void {
     if (!this.isOnlineRunActive()) {
       return;

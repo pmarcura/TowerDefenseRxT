@@ -6,7 +6,6 @@ import { createSessionFromOnlineRoom } from "../game/network/onlineSession";
 import type { OnlineRoomState } from "../game/network/protocol";
 import { getLocalPlayerIds, getPlayablePlayerIds } from "../game/utils/players";
 import { ClassSelectionColumn } from "./ClassSelectionColumn";
-import { GameHud } from "./GameHud";
 import { OnlineLobbyOverlay } from "./OnlineLobbyOverlay";
 import { PauseOverlay } from "./PauseOverlay";
 import { RewardColumn } from "./RewardColumn";
@@ -49,7 +48,6 @@ export const GameOverlayApp = () => {
       {lobbyOpen ? <OnlineLobbyOverlay onClose={() => setLobbyOpen(false)} /> : null}
       <ClassSelectionOverlay state={state} localPlayerIds={localPlayerIds} activePlayerIds={activePlayerIds} />
       <RewardSelectionOverlay state={state} localPlayerIds={localPlayerIds} activePlayerIds={activePlayerIds} />
-      <GameHud state={state} />
       {state.phase === "paused" ? <PauseOverlay settings={state.settings} /> : null}
       <TowerInspectionOverlay state={state} />
       {state.runSummary ? <RunSummaryOverlay summary={state.runSummary} /> : null}

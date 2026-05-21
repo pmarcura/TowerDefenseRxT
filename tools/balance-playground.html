@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis Balance Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-dark: #060913;
+      --bg-card: rgba(15, 23, 42, 0.65);
+      --bg-card-hover: rgba(30, 41, 59, 0.8);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --color-cyan: #00f0ff;
+      --color-magenta: #ff007f;
+      --color-green: #00ff66;
+      --color-yellow: #ffcc00;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(255, 0, 127, 0.05) 0%, transparent 40%);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 2rem;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, var(--color-cyan), var(--color-magenta));
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.5rem;
+      color: var(--bg-dark);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    }
+
+    .header-title h1 {
+      font-size: 2.2rem;
+      background: linear-gradient(90deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-title p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 1100px) {
+      .grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .glass-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 1.8rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-panel:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .section-title {
+      font-size: 1.4rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 4px solid var(--color-cyan);
+      padding-left: 10px;
+    }
+
+    .slider-group {
+      margin-bottom: 1.6rem;
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .slider-title {
+      color: #e2e8f0;
+    }
+
+    .slider-value {
+      color: var(--color-cyan);
+      font-family: monospace;
+      font-weight: 700;
+      background: rgba(0, 240, 255, 0.08);
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 240, 255, 0.15);
+    }
+
+    .input-range {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 99px;
+      outline: none;
+      -webkit-appearance: none;
+      transition: background 0.3s;
+    }
+
+    .input-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-cyan), #0099ff);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+      transition: transform 0.1s;
+    }
+
+    .input-range::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .tower-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.2rem;
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 8px;
+      margin-top: 1rem;
+    }
+
+    .tower-grid::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .tower-grid::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 99px;
+    }
+
+    .tower-grid::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 99px;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 1.5rem;
+    }
+
+    .btn {
+      padding: 0.8rem 1.2rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-cyan), #0099ff);
+      color: #000;
+      box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .btn-full {
+      grid-column: 1 / -1;
+    }
+
+    .json-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.8rem;
+      color: var(--color-cyan);
+      max-height: 150px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+
+    .dropzone-container {
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.01);
+      transition: all 0.3s ease;
+      margin-bottom: 2rem;
+    }
+
+    .dropzone-container:hover, .dropzone-container.dragover {
+      border-color: var(--color-cyan);
+      background: rgba(0, 240, 255, 0.03);
+    }
+
+    .dropzone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.8rem;
+      color: var(--color-cyan);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.2rem;
+      text-align: center;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .stat-diff {
+      font-size: 0.8rem;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .diff-better {
+      color: var(--color-green);
+    }
+
+    .diff-worse {
+      color: var(--color-magenta);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-container {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.2rem;
+      height: 320px;
+      position: relative;
+    }
+
+    .chart-title {
+      font-size: 1rem;
+      color: #e2e8f0;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    .alerts-container {
+      background: rgba(255, 0, 127, 0.03);
+      border: 1px solid rgba(255, 0, 127, 0.2);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-bottom: 2rem;
+    }
+
+    .alerts-title {
+      color: var(--color-magenta);
+      font-size: 1.1rem;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .alert-list {
+      list-style-type: none;
+    }
+
+    .alert-item {
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: #e2e8f0;
+    }
+
+    .alert-item::before {
+      content: "⚠️";
+      font-size: 0.85rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      color: var(--color-cyan);
+      border-bottom-color: var(--color-cyan);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .comparison-banner {
+      background: linear-gradient(90deg, rgba(0, 240, 255, 0.05), rgba(255, 0, 127, 0.05));
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .comparison-details p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .comparison-details strong {
+      color: var(--text-main);
+    }
+
+    /* Steps Section Styling */
+    .steps-section {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-top: 2rem;
+    }
+
+    .steps-title {
+      font-size: 1.1rem;
+      color: #e2e8f0;
+      margin-bottom: 0.8rem;
+    }
+
+    .steps-list {
+      padding-left: 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .steps-list li {
+      margin-bottom: 6px;
+    }
+
+    .steps-list code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #f8fafc;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <div class="logo-badge">⚔️</div>
+        <div class="header-title">
+          <h1>Aegis Balance Playground</h1>
+          <p>Ajuste a economia, torres e monstros em tempo real e teste com simulações em massa.</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid-layout">
+      <!-- PAINEL DE CONTROLES (ESQUERDA) -->
+      <div class="glass-panel">
+        <h2 class="section-title">Ajustar Balanço</h2>
+        
+        <!-- ENEMY HP MULTIPLIER -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-title">HP dos Inimigos</span>
+            <span class="slider-value" id="val-enemy-hp">1.0x</span>
+          </div>
+          <input type="range" class="input-range" id="slider-enemy-hp" min="0.5" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- STARTING CREDITS -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-title">Créditos Iniciais</span>
+            <span class="slider-value" id="val-start-credits">150</span>
+          </div>
+          <input type="range" class="input-range" id="slider-start-credits" min="50" max="500" step="10" value="150">
+        </div>
+
+        <!-- KILL REWARD MULTIPLIER -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-title">Recompensa por Abate (Kill)</span>
+            <span class="slider-value" id="val-kill-reward">1.0x</span>
+          </div>
+          <input type="range" class="input-range" id="slider-kill-reward" min="0.5" max="2.0" step="0.05" value="1.0">
+        </div>
+
+        <!-- WAVE COMPLETION MULTIPLIER -->
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-title">Bônus Fim de Wave</span>
+            <span class="slider-value" id="val-wave-bonus">1.0x</span>
+          </div>
+          <input type="range" class="input-range" id="slider-wave-bonus" min="0.5" max="2.0" step="0.05" value="1.0">
+        </div>
+
+        <h3 class="slider-title" style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1rem;">Multiplicador de Dano das Torres</h3>
+        <div class="tower-grid">
+          <!-- VITRAIL LASER -->
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="slider-title">Lente de Vitral (Vitrail)</span>
+              <span class="slider-value" id="val-vitrail">1.0x</span>
+            </div>
+            <input type="range" class="input-range tower-slider" id="slider-vitrail" data-id="vitrail-laser" min="0.5" max="2.0" step="0.05" value="1.0">
+          </div>
+
+          <!-- CHANT CHAIN -->
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="slider-title">Coro de Ressonância (Chant)</span>
+              <span class="slider-value" id="val-chant">1.0x</span>
+            </div>
+            <input type="range" class="input-range tower-slider" id="slider-chant" data-id="chant-chain" min="0.5" max="2.0" step="0.05" value="1.0">
+          </div>
+
+          <!-- NAVE BELL -->
+          <div class="slider-group">
+            <div class="slider-label">
+              <span class="slider-title">Sino da Nave (Bell)</span>
+              <span class="slider-value" id="val-bell" data-id="nave-bell">1.0x</span>
+            </div>
+            <input type="range" class="input-range tower-slider" id="slider-bell" data-id="nave-bell" min="0.5" max="2.0" step="0.05" value="1.0">
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-secondary" id="btn-reset">Resetar</button>
+          <button class="btn btn-primary" id="btn-download">Baixar JSON</button>
+          <button class="btn btn-primary btn-full" id="btn-copy">Copiar JSON</button>
+        </div>
+
+        <div class="json-box" id="json-preview">{}</div>
+
+        <div class="steps-section">
+          <h4 class="steps-title">Como testar as mudanças?</h4>
+          <ol class="steps-list">
+            <li>Os valores acima são salvos <strong>automaticamente no navegador</strong>.</li>
+            <li>Para treinar ou simular no terminal, clique em <strong>Copiar JSON</strong> e cole no arquivo: <code>server/balance-overrides.json</code></li>
+            <li>Execute a simulação em lote: <code>node tools/batch-balance-test.mjs --runs 200</code></li>
+            <li>Arraste o arquivo <code>tools/latest-balance-results.json</code> gerado para a zona à direita!</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- PAINEL DE RESULTADOS (DIREITA) -->
+      <div class="glass-panel">
+        <h2 class="section-title">Resultados da Simulação IA</h2>
+        
+        <!-- DROPZONE -->
+        <div class="dropzone-container" id="dropzone">
+          <div class="dropzone-icon">📊</div>
+          <h3>Arraste o arquivo de simulação aqui</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
+            Solte o arquivo <code>latest-balance-results.json</code> para carregar os gráficos
+          </p>
+        </div>
+
+        <!-- DASHBOARD CONTAINER -->
+        <div id="dashboard-content" style="display: none;">
+          <!-- COMPARISON BANNER -->
+          <div class="comparison-banner" id="comparison-banner" style="display: none;">
+            <div class="comparison-details">
+              <p>Comparando contra: <strong id="comp-runs-label">Nenhum</strong></p>
+            </div>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" id="btn-clear-comp">Limpar Comparação</button>
+          </div>
+
+          <!-- CARDS -->
+          <div class="dashboard-grid">
+            <div class="stat-card">
+              <div class="stat-label">Taxa de Vitória (Win Rate)</div>
+              <div class="stat-value" id="stat-winrate">0.0%</div>
+              <div class="stat-diff" id="diff-winrate"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Avg Waves Sobrevividas</div>
+              <div class="stat-value" id="stat-waves">0.0</div>
+              <div class="stat-diff" id="diff-waves"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Média Base HP</div>
+              <div class="stat-value" id="stat-hp">0.0</div>
+              <div class="stat-diff" id="diff-hp"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Torres Construídas</div>
+              <div class="stat-value" id="stat-towers">0.0</div>
+              <div class="stat-diff" id="diff-towers"></div>
+            </div>
+          </div>
+
+          <!-- TABS -->
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-graphs">Gráficos de Onda e Torre</button>
+            <button class="tab-btn" data-tab="tab-recs">Recomendações da IA</button>
+          </div>
+
+          <!-- TAB CONTENT: GRAPHS -->
+          <div class="tab-content active" id="tab-graphs">
+            <div class="charts-grid">
+              <div class="chart-container">
+                <div class="chart-title">Sobrevivência por Wave (Ideal: 20/20)</div>
+                <canvas id="chart-survival"></canvas>
+              </div>
+              <div class="chart-container">
+                <div class="chart-title">Eficácia das Torres (Dano Total)</div>
+                <canvas id="chart-towers"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB CONTENT: RECOMENDAÇÕES -->
+          <div class="tab-content" id="tab-recs">
+            <div class="alerts-container">
+              <div class="alerts-title">🚨 Alertas e Recomendações de Balanceamento</div>
+              <ul class="alert-list" id="recs-list">
+                <!-- Recommendations will be populated here -->
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configurações atuais
+    let currentConfig = {
+      enemyHpMultiplier: 1.0,
+      startingCredits: 150,
+      killRewardMultiplier: 1.0,
+      waveCompletionBonus: 1.0,
+      towerDamageMultipliers: {
+        "vitrail-laser": 1.0,
+        "chant-chain": 1.0,
+        "nave-bell": 1.0
+      }
+    };
+
+    // Dados de teste carregados
+    let baselineData = null;
+    let currentData = null;
+
+    // Elementos de UI
+    const sliders = {
+      enemyHp: document.getElementById('slider-enemy-hp'),
+      startCredits: document.getElementById('slider-start-credits'),
+      killReward: document.getElementById('slider-kill-reward'),
+      waveBonus: document.getElementById('slider-wave-bonus'),
+      vitrail: document.getElementById('slider-vitrail'),
+      chant: document.getElementById('slider-chant'),
+      bell: document.getElementById('slider-bell')
+    };
+
+    const valueLabels = {
+      enemyHp: document.getElementById('val-enemy-hp'),
+      startCredits: document.getElementById('val-start-credits'),
+      killReward: document.getElementById('val-kill-reward'),
+      waveBonus: document.getElementById('val-wave-bonus'),
+      vitrail: document.getElementById('val-vitrail'),
+      chant: document.getElementById('val-chant'),
+      bell: document.getElementById('val-bell')
+    };
+
+    const jsonPreview = document.getElementById('json-preview');
+    const dropzone = document.getElementById('dropzone');
+    const dashboardContent = document.getElementById('dashboard-content');
+    const comparisonBanner = document.getElementById('comparison-banner');
+    
+    // Gráficos Chart.js
+    let survivalChart = null;
+    let towersChart = null;
+
+    // Inicializar da localStorage
+    function initConfig() {
+      const saved = localStorage.getItem('aegis-balance-overrides');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          currentConfig = { ...currentConfig, ...parsed };
+          if (parsed.towerDamageMultipliers) {
+            currentConfig.towerDamageMultipliers = { ...currentConfig.towerDamageMultipliers, ...parsed.towerDamageMultipliers };
+          }
+        } catch (e) {
+          console.error("Failed to parse config from localStorage:", e);
+        }
+      }
+      updateUIFromConfig();
+    }
+
+    function updateUIFromConfig() {
+      sliders.enemyHp.value = currentConfig.enemyHpMultiplier;
+      sliders.startCredits.value = currentConfig.startingCredits;
+      sliders.killReward.value = currentConfig.killRewardMultiplier;
+      sliders.waveBonus.value = currentConfig.waveCompletionBonus;
+      sliders.vitrail.value = currentConfig.towerDamageMultipliers["vitrail-laser"] || 1.0;
+      sliders.chant.value = currentConfig.towerDamageMultipliers["chant-chain"] || 1.0;
+      sliders.bell.value = currentConfig.towerDamageMultipliers["nave-bell"] || 1.0;
+
+      valueLabels.enemyHp.textContent = currentConfig.enemyHpMultiplier.toFixed(1) + 'x';
+      valueLabels.startCredits.textContent = currentConfig.startingCredits;
+      valueLabels.killReward.textContent = currentConfig.killRewardMultiplier.toFixed(2) + 'x';
+      valueLabels.waveBonus.textContent = currentConfig.waveCompletionBonus.toFixed(2) + 'x';
+      valueLabels.vitrail.textContent = (currentConfig.towerDamageMultipliers["vitrail-laser"] || 1.0).toFixed(2) + 'x';
+      valueLabels.chant.textContent = (currentConfig.towerDamageMultipliers["chant-chain"] || 1.0).toFixed(2) + 'x';
+      valueLabels.bell.textContent = (currentConfig.towerDamageMultipliers["nave-bell"] || 1.0).toFixed(2) + 'x';
+
+      const jsonStr = JSON.stringify(currentConfig, null, 2);
+      jsonPreview.textContent = jsonStr;
+    }
+
+    function saveConfig() {
+      localStorage.setItem('aegis-balance-overrides', JSON.stringify(currentConfig));
+      jsonPreview.textContent = JSON.stringify(currentConfig, null, 2);
+    }
+
+    // Handlers para sliders
+    sliders.enemyHp.addEventListener('input', (e) => {
+      currentConfig.enemyHpMultiplier = parseFloat(e.target.value);
+      updateUIFromConfig();
+      saveConfig();
+    });
+
+    sliders.startCredits.addEventListener('input', (e) => {
+      currentConfig.startingCredits = parseInt(e.target.value);
+      updateUIFromConfig();
+      saveConfig();
+    });
+
+    sliders.killReward.addEventListener('input', (e) => {
+      currentConfig.killRewardMultiplier = parseFloat(e.target.value);
+      updateUIFromConfig();
+      saveConfig();
+    });
+
+    sliders.waveBonus.addEventListener('input', (e) => {
+      currentConfig.waveCompletionBonus = parseFloat(e.target.value);
+      updateUIFromConfig();
+      saveConfig();
+    });
+
+    // Tower Damage Sliders
+    document.querySelectorAll('.tower-slider').forEach(slider => {
+      slider.addEventListener('input', (e) => {
+        const id = e.target.dataset.id;
+        currentConfig.towerDamageMultipliers[id] = parseFloat(e.target.value);
+        updateUIFromConfig();
+        saveConfig();
+      });
+    });
+
+    // Reset button
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      currentConfig = {
+        enemyHpMultiplier: 1.0,
+        startingCredits: 150,
+        killRewardMultiplier: 1.0,
+        waveCompletionBonus: 1.0,
+        towerDamageMultipliers: {
+          "vitrail-laser": 1.0,
+          "chant-chain": 1.0,
+          "nave-bell": 1.0
+        }
+      };
+      updateUIFromConfig();
+      saveConfig();
+    });
+
+    // Copy JSON
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      navigator.clipboard.writeText(JSON.stringify(currentConfig, null, 2));
+      alert("Configuração JSON copiada com sucesso para a área de transferência!");
+    });
+
+    // Download JSON
+    document.getElementById('btn-download').addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentConfig, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "balance-overrides.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
+
+    // Dropzone logic
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    dropzone.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e) => {
+        if (e.target.files.length > 0) {
+          handleFile(e.target.files[0]);
+        }
+      };
+      input.click();
+    });
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.runs && parsed.winRate !== undefined) {
+            // Se já temos um teste carregado, colocamos ele como baseline antes de aceitar o novo
+            if (currentData) {
+              baselineData = currentData;
+              document.getElementById('comp-runs-label').textContent = `${baselineData.runs} runs (${baselineData.timestamp})`;
+              comparisonBanner.style.display = 'flex';
+            }
+            currentData = parsed;
+            renderDashboard();
+          } else {
+            alert("O arquivo JSON não parece ser um relatório válido gerado por batch-balance-test.mjs");
+          }
+        } catch (err) {
+          alert("Erro ao ler o arquivo JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Renderizar Painel de Análise
+    function renderDashboard() {
+      dropzone.style.display = 'none';
+      dashboardContent.style.display = 'block';
+
+      // Win Rate Card
+      const winRatePct = (currentData.winRate * 100).toFixed(1) + '%';
+      document.getElementById('stat-winrate').textContent = winRatePct;
+      
+      // Waves Card
+      document.getElementById('stat-waves').textContent = currentData.averageWavesCleared.toFixed(1);
+
+      // HP Card
+      document.getElementById('stat-hp').textContent = currentData.averageBaseHpRemaining.toFixed(0);
+
+      // Towers Card
+      document.getElementById('stat-towers').textContent = currentData.averageTowersBuilt.toFixed(1);
+
+      // Calcular diferenças se houver baseline
+      updateDiffLabel('diff-winrate', currentData.winRate, baselineData ? baselineData.winRate : null, true, true);
+      updateDiffLabel('diff-waves', currentData.averageWavesCleared, baselineData ? baselineData.averageWavesCleared : null, false);
+      updateDiffLabel('diff-hp', currentData.averageBaseHpRemaining, baselineData ? baselineData.averageBaseHpRemaining : null, false);
+      updateDiffLabel('diff-towers', currentData.averageTowersBuilt, baselineData ? baselineData.averageTowersBuilt : null, false, false, true);
+
+      // Renderização de Gráficos
+      renderSurvivalChart();
+      renderTowersChart();
+
+      // Renderização das Recomendações
+      renderRecommendations();
+    }
+
+    function updateDiffLabel(elementId, currentValue, baselineValue, isPercent = false, invertBad = false, neutral = false) {
+      const el = document.getElementById(elementId);
+      if (baselineValue === null) {
+        el.textContent = '';
+        return;
+      }
+
+      const diff = currentValue - baselineValue;
+      let text = '';
+      if (isPercent) {
+        text = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(1) + '%';
+      } else {
+        text = (diff >= 0 ? '+' : '') + diff.toFixed(1);
+      }
+
+      el.textContent = text;
+      
+      if (neutral) {
+        el.className = 'stat-diff';
+      } else {
+        const isBetter = diff >= 0 ? !invertBad : invertBad;
+        el.className = 'stat-diff ' + (isBetter ? 'diff-better' : 'diff-worse');
+      }
+    }
+
+    // Gráfico de Sobrevivência por Wave
+    function renderSurvivalChart() {
+      const ctx = document.getElementById('chart-survival').getContext('2d');
+      
+      const labels = currentData.waves.map(w => w.name);
+      
+      // Calcular taxa de sobrevivência incremental para cada wave
+      const currentSurvival = currentData.waves.map(w => (w.clears / w.attempts) * 100);
+      let baselineSurvival = null;
+      if (baselineData && baselineData.waves) {
+        baselineSurvival = baselineData.waves.map(w => (w.clears / w.attempts) * 100);
+      }
+
+      if (survivalChart) {
+        survivalChart.destroy();
+      }
+
+      const datasets = [
+        {
+          label: 'Teste Atual',
+          data: currentSurvival,
+          borderColor: '#00f0ff',
+          backgroundColor: 'rgba(0, 240, 255, 0.1)',
+          fill: true,
+          tension: 0.1
+        }
+      ];
+
+      if (baselineSurvival) {
+        datasets.push({
+          label: 'Teste Anterior',
+          data: baselineSurvival,
+          borderColor: '#ff007f',
+          backgroundColor: 'rgba(255, 0, 127, 0.05)',
+          fill: true,
+          tension: 0.1
+        });
+      }
+
+      survivalChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              title: { display: true, text: '% Sobreviventes' }
+            }
+          }
+        }
+      });
+    }
+
+    // Gráfico de Eficácia das Torres (Dano)
+    function renderTowersChart() {
+      const ctx = document.getElementById('chart-towers').getContext('2d');
+
+      const towerIds = Object.keys(currentData.towers);
+      const labels = towerIds.map(id => id.replace('tower.', ''));
+      const currentDmg = towerIds.map(id => currentData.towers[id].damage);
+
+      let baselineDmg = null;
+      if (baselineData && baselineData.towers) {
+        baselineDmg = towerIds.map(id => baselineData.towers[id] ? baselineData.towers[id].damage : 0);
+      }
+
+      if (towersChart) {
+        towersChart.destroy();
+      }
+
+      const datasets = [
+        {
+          label: 'Teste Atual (Dano)',
+          data: currentDmg,
+          backgroundColor: 'rgba(0, 240, 255, 0.6)',
+          borderWidth: 1
+        }
+      ];
+
+      if (baselineDmg) {
+        datasets.push({
+          label: 'Teste Anterior (Dano)',
+          data: baselineDmg,
+          backgroundColor: 'rgba(255, 0, 127, 0.4)',
+          borderWidth: 1
+        });
+      }
+
+      towersChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Dano Acumulado' }
+            }
+          }
+        }
+      });
+    }
+
+    // Recomendações
+    function renderRecommendations() {
+      const list = document.getElementById('recs-list');
+      list.innerHTML = '';
+
+      if (currentData.recommendations && currentData.recommendations.length > 0) {
+        currentData.recommendations.forEach(rec => {
+          const li = document.createElement('li');
+          li.className = 'alert-item';
+          li.textContent = rec;
+          list.appendChild(li);
+        });
+      } else {
+        const li = document.createElement('li');
+        li.className = 'alert-item';
+        li.textContent = 'A simulação completou perfeitamente. Nenhum problema de balanceamento detectado!';
+        list.appendChild(li);
+      }
+    }
+
+    // Tab Switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Clear Comparison
+    document.getElementById('btn-clear-comp').addEventListener('click', () => {
+      baselineData = null;
+      comparisonBanner.style.display = 'none';
+      renderDashboard();
+    });
+
+    // Inicializar
+    initConfig();
+  </script>
+</body>
+</html>

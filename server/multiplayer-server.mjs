@@ -5,6 +5,14 @@ const MAX_PLAYERS = 12;
 const MIN_PLAYERS = 2;
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const DEFAULT_CLASS_ID = "christian-vitrail-custodian";
+const AI_CLASS_IDS = [
+  "christian-vitrail-custodian",
+  "islamic-zellige-geometer",
+  "hindu-kolam-dancer",
+  "buddhist-mandala-monk",
+  "jewish-menorah-keeper",
+  "shinto-torii-guardian"
+];
 
 /** @typedef {{ id: string, socket: import("ws").WebSocket, roomCode: string | null }} Client */
 /** @typedef {{ code: string, hostClientId: string | null, minPlayers: 2, maxPlayers: 12, seed: number, mapId: "aegis-endless-procedural", aiFill: boolean, started: boolean, seats: RoomSeat[], createdAt: number, updatedAt: number }} Room */
@@ -86,6 +94,16 @@ const handleClientMessage = (client, message) => {
       seat.ready = Boolean(message.ready);
       seat.classId = seat.classId ?? DEFAULT_CLASS_ID;
     });
+    return;
+  }
+
+  if (message.type === "add-bot") {
+    addBot(client, message.seatId ?? null);
+    return;
+  }
+
+  if (message.type === "remove-bot") {
+    removeBot(client, message.seatId);
     return;
   }
 
@@ -265,6 +283,70 @@ const startRoom = (client, automatic = false) => {
   touchRoom(room);
   broadcast(room, { type: "room-started", room: serializeRoom(room) });
   console.log(`[multiplayer] room ${room.code} started with ${connectedSeats.length} human player(s)`);
+};
+
+const addBot = (client, seatId) => {
+  const room = requireRoom(client);
+
+  if (room.hostClientId !== client.id) {
+    throw new Error('Apenas o host pode adicionar bots');
+  }
+
+  if (room.started) {
+    throw new Error('Sala ja iniciou');
+  }
+
+  const seat = seatId
+    ? room.seats.find((candidate) => candidate.id === seatId && candidate.kind === 'empty')
+    : room.seats.find((candidate) => candidate.kind === 'empty');
+
+  if (!seat) {
+    throw new Error('Nenhum assento vazio disponivel');
+  }
+
+  seat.kind = 'ai-partner';
+  seat.displayName = 'Bot IA';
+  seat.classId = AI_CLASS_IDS[Math.floor(Math.random() * AI_CLASS_IDS.length)];
+  seat.connected = true;
+  seat.ready = true;
+  seat.clientId = null;
+  seat.isHost = false;
+
+  touchRoom(room);
+  broadcastRoom(room);
+};
+
+const removeBot = (client, seatId) => {
+  const room = requireRoom(client);
+
+  if (room.hostClientId !== client.id) {
+    throw new Error('Apenas o host pode remover bots');
+  }
+
+  if (room.started) {
+    throw new Error('Sala ja iniciou');
+  }
+
+  if (typeof seatId !== 'string') {
+    throw new Error('seatId obrigatorio');
+  }
+
+  const seat = room.seats.find((candidate) => candidate.id === seatId && candidate.kind === 'ai-partner');
+
+  if (!seat) {
+    throw new Error('Assento de bot nao encontrado');
+  }
+
+  seat.kind = 'empty';
+  seat.displayName = seat.id.toUpperCase();
+  seat.classId = null;
+  seat.connected = false;
+  seat.ready = false;
+  seat.clientId = null;
+  seat.isHost = false;
+
+  touchRoom(room);
+  broadcastRoom(room);
 };
 
 const relayGameAction = (client, action) => {

@@ -6,6 +6,7 @@ import {
   WAVE_AUTO_START_MS,
   WAVE_COMPLETION_BONUS_PER_PLAYER
 } from "../../game/config/constants";
+import { balanceConfig } from "../../game/config/BalanceConfig";
 import { getEnemyDefinition } from "../../game/data/enemies";
 import { getMapStage } from "../../game/data/map";
 import {
@@ -571,7 +572,7 @@ export class TowerDefenseEnv {
       return -2;
     }
 
-    this.rewardTeam(WAVE_COMPLETION_BONUS_PER_PLAYER, 1);
+    this.rewardTeam(balanceConfig.getWaveCompletionBonus(WAVE_COMPLETION_BONUS_PER_PLAYER), 1);
     this.stateInternal.currentWaveIndex += 1;
     events.push({
       kind: "wave-cleared",
@@ -643,7 +644,7 @@ export class TowerDefenseEnv {
       1 + Math.max(0, group.count - 1) * (enemy.traits.includes("enxame") ? 0.036 : 0.023);
     const damageNoise = 0.9 + this.rng.next() * 0.2;
     const damageCapacity = (totalDps * exposureSeconds * damageNoise) / pressureDivisor;
-    const effectiveHp = enemy.maxHp + enemy.armor * 9;
+    const effectiveHp = (enemy.maxHp + enemy.armor * 9) * balanceConfig.getEnemyHpMultiplier();
     const killed = Math.min(group.count, Math.floor(damageCapacity / effectiveHp));
     const leaked = group.count - killed;
     const dealtDamage = Math.min(group.count * effectiveHp, damageCapacity);
@@ -707,7 +708,7 @@ export class TowerDefenseEnv {
       branchEffects.cooldownMultiplier *
       auraMultiplier.cooldown;
 
-    return damage * (1000 / cooldown) * routeCoverage * effectMultiplier;
+    return damage * (1000 / cooldown) * routeCoverage * effectMultiplier * balanceConfig.getTowerDamageMultiplier(tower.typeId);
   }
 
   private getAuraMultiplier(
@@ -803,7 +804,7 @@ export class TowerDefenseEnv {
       allocatedKills += towerKills;
       contribution.tower.kills += towerKills;
       player.kills += towerKills;
-      this.rewardTeam(towerKills * enemy.reward, KILL_REWARD_MULTIPLIER);
+      this.rewardTeam(towerKills * enemy.reward, KILL_REWARD_MULTIPLIER * balanceConfig.getKillRewardMultiplier(1.0));
 
       for (let indexXp = 0; indexXp < Math.max(1, towerKills); indexXp += 1) {
         this.grantTowerXp(contribution.tower);
@@ -1051,7 +1052,7 @@ const createInitialState = (
         createPlayer(
           playerId,
           requestedPlayers[playerId] ?? playerClassDefinitions[index % playerClassDefinitions.length].id,
-          openingMap.startingCredits
+          balanceConfig.getStartingCredits(openingMap.startingCredits)
         )
       ])
     ) as Record<PlayerId, HeadlessPlayerState>,

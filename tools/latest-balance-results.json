@@ -1,0 +1,807 @@
+{
+  "timestamp": "2026-05-21T19:23:23.278Z",
+  "overrides": {},
+  "runs": 200,
+  "seed": 14729,
+  "winRate": 0.615,
+  "averageWavesCleared": 8.79,
+  "averageBaseHpRemaining": 8.665,
+  "averageCreditsRemaining": 1402.04,
+  "averageTowersBuilt": 20.665,
+  "botProfiles": {
+    "novice": 138,
+    "mentor": 77,
+    "aggressive": 61,
+    "economist": 55,
+    "experimental": 69
+  },
+  "classPairs": {
+    "candomble-axe-guardian + umbanda-gira-medium": {
+      "attempts": 7,
+      "wins": 4,
+      "winRate": 0.5714285714285714,
+      "averageWavesCleared": 9.285714285714286,
+      "averageBaseHpRemaining": 6.285714285714286
+    },
+    "candomble-axe-guardian + candomble-axe-guardian": {
+      "attempts": 6,
+      "wins": 4,
+      "winRate": 0.6666666666666666,
+      "averageWavesCleared": 9.166666666666666,
+      "averageBaseHpRemaining": 3.3333333333333335
+    },
+    "hindu-dharma-weaver + hindu-dharma-weaver": {
+      "attempts": 3,
+      "wins": 2,
+      "winRate": 0.6666666666666666,
+      "averageWavesCleared": 9.333333333333334,
+      "averageBaseHpRemaining": 11.333333333333334
+    },
+    "buddhist-middle-path + candomble-axe-guardian": {
+      "attempts": 3,
+      "wins": 1,
+      "winRate": 0.3333333333333333,
+      "averageWavesCleared": 7.666666666666667,
+      "averageBaseHpRemaining": 3.3333333333333335
+    },
+    "candomble-axe-guardian + christian-vitrail-custodian": {
+      "attempts": 4,
+      "wins": 4,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 15.5
+    },
+    "christian-vitrail-custodian + hindu-dharma-weaver": {
+      "attempts": 9,
+      "wins": 5,
+      "winRate": 0.5555555555555556,
+      "averageWavesCleared": 8.777777777777779,
+      "averageBaseHpRemaining": 5.666666666666667
+    },
+    "islamic-zellige-geometer + hindu-dharma-weaver": {
+      "attempts": 7,
+      "wins": 2,
+      "winRate": 0.2857142857142857,
+      "averageWavesCleared": 6.714285714285714,
+      "averageBaseHpRemaining": 2.4285714285714284
+    },
+    "umbanda-gira-medium + candomble-axe-guardian": {
+      "attempts": 4,
+      "wins": 1,
+      "winRate": 0.25,
+      "averageWavesCleared": 9.25,
+      "averageBaseHpRemaining": 4.25
+    },
+    "candomble-axe-guardian + islamic-zellige-geometer": {
+      "attempts": 7,
+      "wins": 6,
+      "winRate": 0.8571428571428571,
+      "averageWavesCleared": 9.285714285714286,
+      "averageBaseHpRemaining": 17.142857142857142
+    },
+    "christian-vitrail-custodian + shinto-torii-keeper": {
+      "attempts": 6,
+      "wins": 3,
+      "winRate": 0.5,
+      "averageWavesCleared": 7.833333333333333,
+      "averageBaseHpRemaining": 9
+    },
+    "shinto-torii-keeper + islamic-zellige-geometer": {
+      "attempts": 6,
+      "wins": 4,
+      "winRate": 0.6666666666666666,
+      "averageWavesCleared": 8.166666666666666,
+      "averageBaseHpRemaining": 16
+    },
+    "buddhist-middle-path + hindu-dharma-weaver": {
+      "attempts": 10,
+      "wins": 6,
+      "winRate": 0.6,
+      "averageWavesCleared": 8.9,
+      "averageBaseHpRemaining": 8.7
+    },
+    "buddhist-middle-path + christian-vitrail-custodian": {
+      "attempts": 5,
+      "wins": 2,
+      "winRate": 0.4,
+      "averageWavesCleared": 8.6,
+      "averageBaseHpRemaining": 7.4
+    },
+    "christian-vitrail-custodian + candomble-axe-guardian": {
+      "attempts": 6,
+      "wins": 6,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 16.833333333333332
+    },
+    "umbanda-gira-medium + umbanda-gira-medium": {
+      "attempts": 7,
+      "wins": 1,
+      "winRate": 0.14285714285714285,
+      "averageWavesCleared": 8.714285714285714,
+      "averageBaseHpRemaining": 0.42857142857142855
+    },
+    "hindu-dharma-weaver + islamic-zellige-geometer": {
+      "attempts": 8,
+      "wins": 7,
+      "winRate": 0.875,
+      "averageWavesCleared": 9.375,
+      "averageBaseHpRemaining": 15.75
+    },
+    "umbanda-gira-medium + shinto-torii-keeper": {
+      "attempts": 5,
+      "wins": 2,
+      "winRate": 0.4,
+      "averageWavesCleared": 8.2,
+      "averageBaseHpRemaining": 1.6
+    },
+    "shinto-torii-keeper + shinto-torii-keeper": {
+      "attempts": 3,
+      "wins": 3,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 18.666666666666668
+    },
+    "shinto-torii-keeper + buddhist-middle-path": {
+      "attempts": 1,
+      "wins": 0,
+      "winRate": 0,
+      "averageWavesCleared": 7,
+      "averageBaseHpRemaining": 0
+    },
+    "christian-vitrail-custodian + christian-vitrail-custodian": {
+      "attempts": 4,
+      "wins": 2,
+      "winRate": 0.5,
+      "averageWavesCleared": 8.5,
+      "averageBaseHpRemaining": 3.75
+    },
+    "shinto-torii-keeper + christian-vitrail-custodian": {
+      "attempts": 1,
+      "wins": 1,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 5
+    },
+    "shinto-torii-keeper + candomble-axe-guardian": {
+      "attempts": 5,
+      "wins": 4,
+      "winRate": 0.8,
+      "averageWavesCleared": 9.8,
+      "averageBaseHpRemaining": 8.4
+    },
+    "umbanda-gira-medium + buddhist-middle-path": {
+      "attempts": 3,
+      "wins": 2,
+      "winRate": 0.6666666666666666,
+      "averageWavesCleared": 9.666666666666666,
+      "averageBaseHpRemaining": 9
+    },
+    "umbanda-gira-medium + islamic-zellige-geometer": {
+      "attempts": 3,
+      "wins": 2,
+      "winRate": 0.6666666666666666,
+      "averageWavesCleared": 9,
+      "averageBaseHpRemaining": 12.666666666666666
+    },
+    "buddhist-middle-path + islamic-zellige-geometer": {
+      "attempts": 5,
+      "wins": 3,
+      "winRate": 0.6,
+      "averageWavesCleared": 7.6,
+      "averageBaseHpRemaining": 8.2
+    },
+    "islamic-zellige-geometer + islamic-zellige-geometer": {
+      "attempts": 5,
+      "wins": 5,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 11.6
+    },
+    "buddhist-middle-path + umbanda-gira-medium": {
+      "attempts": 3,
+      "wins": 2,
+      "winRate": 0.6666666666666666,
+      "averageWavesCleared": 8,
+      "averageBaseHpRemaining": 7.333333333333333
+    },
+    "islamic-zellige-geometer + shinto-torii-keeper": {
+      "attempts": 3,
+      "wins": 3,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 19.333333333333332
+    },
+    "buddhist-middle-path + shinto-torii-keeper": {
+      "attempts": 4,
+      "wins": 3,
+      "winRate": 0.75,
+      "averageWavesCleared": 8,
+      "averageBaseHpRemaining": 6.5
+    },
+    "candomble-axe-guardian + hindu-dharma-weaver": {
+      "attempts": 5,
+      "wins": 3,
+      "winRate": 0.6,
+      "averageWavesCleared": 8.6,
+      "averageBaseHpRemaining": 7.8
+    },
+    "christian-vitrail-custodian + islamic-zellige-geometer": {
+      "attempts": 4,
+      "wins": 4,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 14.75
+    },
+    "candomble-axe-guardian + buddhist-middle-path": {
+      "attempts": 3,
+      "wins": 3,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 14.333333333333334
+    },
+    "islamic-zellige-geometer + candomble-axe-guardian": {
+      "attempts": 7,
+      "wins": 4,
+      "winRate": 0.5714285714285714,
+      "averageWavesCleared": 8.714285714285714,
+      "averageBaseHpRemaining": 9.571428571428571
+    },
+    "shinto-torii-keeper + umbanda-gira-medium": {
+      "attempts": 3,
+      "wins": 1,
+      "winRate": 0.3333333333333333,
+      "averageWavesCleared": 8,
+      "averageBaseHpRemaining": 5.666666666666667
+    },
+    "umbanda-gira-medium + hindu-dharma-weaver": {
+      "attempts": 3,
+      "wins": 0,
+      "winRate": 0,
+      "averageWavesCleared": 7.333333333333333,
+      "averageBaseHpRemaining": 0
+    },
+    "shinto-torii-keeper + hindu-dharma-weaver": {
+      "attempts": 6,
+      "wins": 5,
+      "winRate": 0.8333333333333334,
+      "averageWavesCleared": 9.666666666666666,
+      "averageBaseHpRemaining": 11
+    },
+    "islamic-zellige-geometer + buddhist-middle-path": {
+      "attempts": 4,
+      "wins": 3,
+      "winRate": 0.75,
+      "averageWavesCleared": 8.5,
+      "averageBaseHpRemaining": 7
+    },
+    "hindu-dharma-weaver + christian-vitrail-custodian": {
+      "attempts": 4,
+      "wins": 3,
+      "winRate": 0.75,
+      "averageWavesCleared": 8.5,
+      "averageBaseHpRemaining": 10
+    },
+    "islamic-zellige-geometer + christian-vitrail-custodian": {
+      "attempts": 2,
+      "wins": 1,
+      "winRate": 0.5,
+      "averageWavesCleared": 9,
+      "averageBaseHpRemaining": 12
+    },
+    "christian-vitrail-custodian + umbanda-gira-medium": {
+      "attempts": 2,
+      "wins": 1,
+      "winRate": 0.5,
+      "averageWavesCleared": 9.5,
+      "averageBaseHpRemaining": 7
+    },
+    "hindu-dharma-weaver + buddhist-middle-path": {
+      "attempts": 2,
+      "wins": 0,
+      "winRate": 0,
+      "averageWavesCleared": 6,
+      "averageBaseHpRemaining": 0
+    },
+    "umbanda-gira-medium + christian-vitrail-custodian": {
+      "attempts": 2,
+      "wins": 1,
+      "winRate": 0.5,
+      "averageWavesCleared": 9.5,
+      "averageBaseHpRemaining": 3
+    },
+    "buddhist-middle-path + buddhist-middle-path": {
+      "attempts": 2,
+      "wins": 1,
+      "winRate": 0.5,
+      "averageWavesCleared": 7.5,
+      "averageBaseHpRemaining": 7
+    },
+    "hindu-dharma-weaver + candomble-axe-guardian": {
+      "attempts": 2,
+      "wins": 1,
+      "winRate": 0.5,
+      "averageWavesCleared": 7.5,
+      "averageBaseHpRemaining": 6.5
+    },
+    "islamic-zellige-geometer + umbanda-gira-medium": {
+      "attempts": 1,
+      "wins": 1,
+      "winRate": 1,
+      "averageWavesCleared": 10,
+      "averageBaseHpRemaining": 20
+    },
+    "candomble-axe-guardian + shinto-torii-keeper": {
+      "attempts": 4,
+      "wins": 1,
+      "winRate": 0.25,
+      "averageWavesCleared": 8,
+      "averageBaseHpRemaining": 2
+    },
+    "hindu-dharma-weaver + umbanda-gira-medium": {
+      "attempts": 1,
+      "wins": 0,
+      "winRate": 0,
+      "averageWavesCleared": 8,
+      "averageBaseHpRemaining": 0
+    }
+  },
+  "waves": [
+    {
+      "id": "wave-01",
+      "name": "Procissao Inicial",
+      "attempts": 200,
+      "clears": 200,
+      "deaths": 0,
+      "clearRate": 1,
+      "averageBaseDamage": 0.41,
+      "averageLeaks": 0.41,
+      "averageKills": 7.59,
+      "routeCount": 1,
+      "mapStageIndex": 0
+    },
+    {
+      "id": "wave-02",
+      "name": "Primeira Guarda",
+      "attempts": 200,
+      "clears": 200,
+      "deaths": 0,
+      "clearRate": 1,
+      "averageBaseDamage": 0.265,
+      "averageLeaks": 0.25,
+      "averageKills": 11.75,
+      "routeCount": 1,
+      "mapStageIndex": 0
+    },
+    {
+      "id": "wave-03",
+      "name": "Nave Alongada",
+      "attempts": 200,
+      "clears": 199,
+      "deaths": 1,
+      "clearRate": 0.995,
+      "averageBaseDamage": 0.485,
+      "averageLeaks": 0.485,
+      "averageKills": 26.47,
+      "routeCount": 1,
+      "mapStageIndex": 1
+    },
+    {
+      "id": "wave-04",
+      "name": "Muralha Movel",
+      "attempts": 199,
+      "clears": 199,
+      "deaths": 0,
+      "clearRate": 1,
+      "averageBaseDamage": 0.07035175879396985,
+      "averageLeaks": 0.035175879396984924,
+      "averageKills": 11.964824120603016,
+      "routeCount": 1,
+      "mapStageIndex": 1
+    },
+    {
+      "id": "wave-05",
+      "name": "Boss: Reliquiario Solitario",
+      "attempts": 199,
+      "clears": 188,
+      "deaths": 11,
+      "clearRate": 0.9447236180904522,
+      "averageBaseDamage": 7.708542713567839,
+      "averageLeaks": 2.8743718592964824,
+      "averageKills": 26.160804020100503,
+      "routeCount": 2,
+      "mapStageIndex": 2
+    },
+    {
+      "id": "wave-06",
+      "name": "Retorno Ampliado",
+      "attempts": 188,
+      "clears": 173,
+      "deaths": 15,
+      "clearRate": 0.9202127659574468,
+      "averageBaseDamage": 1.5159574468085106,
+      "averageLeaks": 0.7606382978723404,
+      "averageKills": 38.680851063829785,
+      "routeCount": 2,
+      "mapStageIndex": 3
+    },
+    {
+      "id": "wave-07",
+      "name": "Duas Procissoes",
+      "attempts": 173,
+      "clears": 171,
+      "deaths": 2,
+      "clearRate": 0.9884393063583815,
+      "averageBaseDamage": 0.06936416184971098,
+      "averageLeaks": 0.06936416184971098,
+      "averageKills": 72.80346820809248,
+      "routeCount": 2,
+      "mapStageIndex": 3
+    },
+    {
+      "id": "wave-08",
+      "name": "Veu de Escudos",
+      "attempts": 171,
+      "clears": 165,
+      "deaths": 6,
+      "clearRate": 0.9649122807017544,
+      "averageBaseDamage": 0.6783625730994152,
+      "averageLeaks": 0.3391812865497076,
+      "averageKills": 49.50292397660819,
+      "routeCount": 2,
+      "mapStageIndex": 3
+    },
+    {
+      "id": "wave-09",
+      "name": "Clamor Triplo",
+      "attempts": 165,
+      "clears": 140,
+      "deaths": 25,
+      "clearRate": 0.8484848484848485,
+      "averageBaseDamage": 5.496969696969697,
+      "averageLeaks": 5.496969696969697,
+      "averageKills": 66.80606060606061,
+      "routeCount": 3,
+      "mapStageIndex": 4
+    },
+    {
+      "id": "wave-10",
+      "name": "Boss: Duas Reliquias",
+      "attempts": 140,
+      "clears": 123,
+      "deaths": 17,
+      "clearRate": 0.8785714285714286,
+      "averageBaseDamage": 2.1142857142857143,
+      "averageLeaks": 2.1142857142857143,
+      "averageKills": 86.81428571428572,
+      "routeCount": 3,
+      "mapStageIndex": 4
+    }
+  ],
+  "towers": {
+    "vitrail-laser": {
+      "built": 125,
+      "kills": 4788,
+      "damage": 432253.8907552129,
+      "averageLevel": 4.384,
+      "buildShare": 0.03024437454633438
+    },
+    "chant-chain": {
+      "built": 92,
+      "kills": 2596,
+      "damage": 180652.4701970972,
+      "averageLevel": 4.163043478260869,
+      "buildShare": 0.022259859666102104
+    },
+    "nave-bell": {
+      "built": 133,
+      "kills": 571,
+      "damage": 41796.8533504003,
+      "averageLevel": 3.0676691729323307,
+      "buildShare": 0.03218001451729978
+    },
+    "vitrail-workshop": {
+      "built": 21,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.0050810549237841765
+    },
+    "gira-point-chain": {
+      "built": 96,
+      "kills": 2430,
+      "damage": 153154.67798541873,
+      "averageLevel": 3.9583333333333335,
+      "buildShare": 0.023227679651584805
+    },
+    "guia-lantern": {
+      "built": 146,
+      "kills": 4858,
+      "damage": 424738.37580921967,
+      "averageLevel": 4.260273972602739,
+      "buildShare": 0.03532542947011856
+    },
+    "pemba-trace": {
+      "built": 136,
+      "kills": 498,
+      "damage": 34242.873670858186,
+      "averageLevel": 2.860294117647059,
+      "buildShare": 0.03290587950641181
+    },
+    "support-house": {
+      "built": 15,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.0036293249455601256
+    },
+    "mihrab-fractal": {
+      "built": 92,
+      "kills": 3502,
+      "damage": 340145.566701962,
+      "averageLevel": 4.315217391304348,
+      "buildShare": 0.022259859666102104
+    },
+    "zellige-prism": {
+      "built": 139,
+      "kills": 4697,
+      "damage": 340490.3704048759,
+      "averageLevel": 4.0647482014388485,
+      "buildShare": 0.033631744495523835
+    },
+    "minaret-pulse": {
+      "built": 183,
+      "kills": 3032,
+      "damage": 278375.06102189026,
+      "averageLevel": 3.469945355191257,
+      "buildShare": 0.04427776433583353
+    },
+    "geometry-bazaar": {
+      "built": 28,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.006774739898378902
+    },
+    "mandala-slow": {
+      "built": 165,
+      "kills": 780,
+      "damage": 62305.40404964554,
+      "averageLevel": 3.0424242424242425,
+      "buildShare": 0.039922574401161384
+    },
+    "lotus-chakra": {
+      "built": 137,
+      "kills": 4006,
+      "damage": 289067.26044765895,
+      "averageLevel": 4.094890510948905,
+      "buildShare": 0.03314783450278248
+    },
+    "diya-flame": {
+      "built": 169,
+      "kills": 4782,
+      "damage": 399385.4535398824,
+      "averageLevel": 3.9763313609467454,
+      "buildShare": 0.04089039438664408
+    },
+    "lotus-garden": {
+      "built": 29,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.007016694894749577
+    },
+    "stupa-silence": {
+      "built": 125,
+      "kills": 548,
+      "damage": 40005.59089561498,
+      "averageLevel": 3.04,
+      "buildShare": 0.03024437454633438
+    },
+    "dharma-wheel": {
+      "built": 121,
+      "kills": 2747,
+      "damage": 198462.2530864991,
+      "averageLevel": 3.603305785123967,
+      "buildShare": 0.02927655456085168
+    },
+    "bodhi-lamp": {
+      "built": 150,
+      "kills": 3743,
+      "damage": 322584.56588049093,
+      "averageLevel": 3.8333333333333335,
+      "buildShare": 0.03629324945560126
+    },
+    "bodhi-garden": {
+      "built": 21,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.0050810549237841765
+    },
+    "torii-harae": {
+      "built": 138,
+      "kills": 670,
+      "damage": 51385.50727010898,
+      "averageLevel": 3.0072463768115942,
+      "buildShare": 0.03338978949915316
+    },
+    "kagura-bell": {
+      "built": 86,
+      "kills": 2844,
+      "damage": 192803.67410306775,
+      "averageLevel": 4.127906976744186,
+      "buildShare": 0.020808129687878055
+    },
+    "omamori-ward": {
+      "built": 90,
+      "kills": 3715,
+      "damage": 357375.5067165368,
+      "averageLevel": 4.377777777777778,
+      "buildShare": 0.021775949673360755
+    },
+    "lantern-garden": {
+      "built": 13,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.0031454149528187757
+    },
+    "axe-drum": {
+      "built": 249,
+      "kills": 4919,
+      "damage": 392742.58874957036,
+      "averageLevel": 3.63855421686747,
+      "buildShare": 0.06024679409629809
+    },
+    "bead-circle": {
+      "built": 111,
+      "kills": 3349,
+      "damage": 241096.92152870947,
+      "averageLevel": 4.072072072072072,
+      "buildShare": 0.02685700459714493
+    },
+    "xire-flame": {
+      "built": 79,
+      "kills": 3063,
+      "damage": 299298.8010408029,
+      "averageLevel": 4.341772151898734,
+      "buildShare": 0.01911444471328333
+    },
+    "leaf-house": {
+      "built": 34,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.008226469876602952
+    },
+    "knight-order": {
+      "built": 54,
+      "kills": 105,
+      "damage": 7488.889605349616,
+      "averageLevel": 3.4074074074074074,
+      "buildShare": 0.013065569804016453
+    },
+    "illuminated-manuscript": {
+      "built": 139,
+      "kills": 663,
+      "damage": 51039.27800312748,
+      "averageLevel": 2.7697841726618706,
+      "buildShare": 0.033631744495523835
+    },
+    "gira-circle": {
+      "built": 16,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.0038712799419308008
+    },
+    "tactical-smoke": {
+      "built": 135,
+      "kills": 665,
+      "damage": 50042.166151925776,
+      "averageLevel": 2.7925925925925927,
+      "buildShare": 0.03266392451004113
+    },
+    "astrolabe-compass": {
+      "built": 211,
+      "kills": 1052,
+      "damage": 82660.66691584872,
+      "averageLevel": 2.81042654028436,
+      "buildShare": 0.05105250423421244
+    },
+    "symmetry-court": {
+      "built": 26,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.0062908299056375514
+    },
+    "conch-pulse": {
+      "built": 35,
+      "kills": 360,
+      "damage": 25079.499402129,
+      "averageLevel": 3.4,
+      "buildShare": 0.008468424872973626
+    },
+    "solar-yantra": {
+      "built": 88,
+      "kills": 266,
+      "damage": 22984.334779736906,
+      "averageLevel": 2.9886363636363638,
+      "buildShare": 0.021292039680619403
+    },
+    "attention-bell": {
+      "built": 15,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.0036293249455601256
+    },
+    "middle-bridge": {
+      "built": 36,
+      "kills": 178,
+      "damage": 11537.45037418273,
+      "averageLevel": 3.138888888888889,
+      "buildShare": 0.008710379869344302
+    },
+    "shimenawa-cord": {
+      "built": 150,
+      "kills": 753,
+      "damage": 64855.008110225346,
+      "averageLevel": 2.8733333333333335,
+      "buildShare": 0.03629324945560126
+    },
+    "red-passage": {
+      "built": 43,
+      "kills": 158,
+      "damage": 11793.700945602295,
+      "averageLevel": 3.2093023255813953,
+      "buildShare": 0.010404064843939027
+    },
+    "atabaque-beat": {
+      "built": 45,
+      "kills": 0,
+      "damage": 0,
+      "averageLevel": 1,
+      "buildShare": 0.010887974836680378
+    },
+    "cutting-leaf": {
+      "built": 217,
+      "kills": 1920,
+      "damage": 193345.99106026467,
+      "averageLevel": 3.0276497695852536,
+      "buildShare": 0.05250423421243649
+    }
+  },
+  "deathWaves": {
+    "wave-09": 25,
+    "wave-10": 17,
+    "wave-06": 15,
+    "wave-05": 11,
+    "wave-08": 6,
+    "wave-03": 1,
+    "wave-07": 2
+  },
+  "recommendations": [
+    "Dificuldade macro esta dentro de uma janela util (61.5% vitorias). Ajustar picos, nao o jogo inteiro.",
+    "Economia esta sobrando demais (1402 creditos medios no fim). Reduzir recompensa por abate/onda ou criar mais gasto util antes das waves 8-10.",
+    "wave-05 esta vazando muito sem necessariamente matar. Isso costuma gerar frustracao: reduzir baseDamage ou espacamento de spawn.",
+    "wave-09 esta vazando muito sem necessariamente matar. Isso costuma gerar frustracao: reduzir baseDamage ou espacamento de spawn.",
+    "Oficina quase nao e escolhido (0.5%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Apoio quase nao e escolhido (0.4%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Bazar quase nao e escolhido (0.7%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Jardim quase nao e escolhido (0.7%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Jardim quase nao e escolhido (0.5%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Lanternas quase nao e escolhido (0.3%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Folhas quase nao e escolhido (0.8%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Roda quase nao e escolhido (0.4%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Pátio quase nao e escolhido (0.6%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Concha quase nao e escolhido (0.8%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Atenção quase nao e escolhido (0.4%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Ponte quase nao e escolhido (0.9%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Passagem quase nao e escolhido (1.0%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Atabaque quase nao e escolhido (1.1%). Melhorar custo, funcao visual ou vantagem situacional.",
+    "Spread de classe esta alto (100.0%). Checar multiplicadores de custo/dano das piores duplas."
+  ]
+}

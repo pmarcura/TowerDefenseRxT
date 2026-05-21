@@ -62,6 +62,14 @@ export type OnlineClientMessage =
       type: "start-room";
     }
   | {
+      type: "add-bot";
+      seatId?: string;
+    }
+  | {
+      type: "remove-bot";
+      seatId: string;
+    }
+  | {
       type: "game-action";
       action: GameAction;
     };

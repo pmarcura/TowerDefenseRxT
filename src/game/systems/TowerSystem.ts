@@ -5,6 +5,7 @@ import { getTowerLevelBonuses } from "../data/towerProgression";
 import { GameRegistry } from "../GameRegistry";
 import type { EnemyEntity, TowerEntity } from "../models/types";
 import { distanceSquared } from "../utils/math";
+import { balanceConfig } from "../config/BalanceConfig";
 import type { AllySystem } from "./AllySystem";
 import type { GameSystem } from "./GameSystem";
 import type { ProjectileSystem } from "./ProjectileSystem";
@@ -105,7 +106,8 @@ export class TowerSystem implements GameSystem {
         skillEffects.damageMultiplier *
         levelBonuses.damageMultiplier *
         branchEffects.damageMultiplier *
-        auraEffects.damageMultiplier,
+        auraEffects.damageMultiplier *
+        balanceConfig.getTowerDamageMultiplier(tower.typeId),
       criticalChance: Math.min(0.2, 0.05 + tower.level * 0.006 + tower.branchRanks.rupture * 0.015),
       criticalMultiplier: 1.75 + tower.branchRanks.focus * 0.1,
       effect: definition.effect,
