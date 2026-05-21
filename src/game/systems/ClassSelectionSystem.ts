@@ -2,6 +2,7 @@ import { playerClassDefinitions } from "../data/playerClasses";
 import { getWaveDefinition } from "../data/waves";
 import { GameRegistry } from "../GameRegistry";
 import type { PlayerId } from "../models/types";
+import { getPlayablePlayerIds, getPlayerLabel } from "../utils/players";
 import type { GameSystem } from "./GameSystem";
 
 export class ClassSelectionSystem implements GameSystem {
@@ -20,12 +21,13 @@ export class ClassSelectionSystem implements GameSystem {
 
     const playerChoice = classSelection.choices[playerId];
 
-    if (playerChoice.confirmed) {
+    if (!playerChoice || playerChoice.confirmed) {
       return false;
     }
 
     playerChoice.selectedClassIndex = classIndex;
     state.playerClasses[playerId] = playerClassDefinitions[classIndex].id;
+    this.registry.updateSessionSeat(playerId, { classId: state.playerClasses[playerId] });
     this.syncSoloPartnerClass(playerId, classIndex);
     this.registry.notifyChange();
 
@@ -42,7 +44,7 @@ export class ClassSelectionSystem implements GameSystem {
 
     const playerChoice = classSelection.choices[playerId];
 
-    if (playerChoice.confirmed) {
+    if (!playerChoice || playerChoice.confirmed) {
       return false;
     }
 
@@ -50,6 +52,7 @@ export class ClassSelectionSystem implements GameSystem {
     const nextIndex = (playerChoice.selectedClassIndex + direction + total) % total;
     playerChoice.selectedClassIndex = nextIndex;
     state.playerClasses[playerId] = playerClassDefinitions[nextIndex].id;
+    this.registry.updateSessionSeat(playerId, { classId: state.playerClasses[playerId] });
     this.syncSoloPartnerClass(playerId, nextIndex);
     this.registry.notifyChange();
 
@@ -66,15 +69,19 @@ export class ClassSelectionSystem implements GameSystem {
 
     const playerChoice = classSelection.choices[playerId];
 
-    if (playerChoice.confirmed) {
+    if (!playerChoice || playerChoice.confirmed) {
       return false;
     }
 
     playerChoice.confirmed = true;
     state.playerClasses[playerId] =
       playerClassDefinitions[playerChoice.selectedClassIndex].id;
+    this.registry.updateSessionSeat(playerId, {
+      classId: state.playerClasses[playerId],
+      ready: true
+    });
     this.registry.pushPresentationEvent("audio", 500, { cueId: "ui_confirm" });
-    this.registry.pushMessage(`${playerId.toUpperCase()} pronto`, 1600);
+    this.registry.pushMessage(`${getPlayerLabel(playerId)} pronto`, 1600);
 
     if (this.canStartRun()) {
       this.startPlaying();
@@ -89,7 +96,10 @@ export class ClassSelectionSystem implements GameSystem {
     const classSelection = this.registry.state.classSelection;
 
     return Boolean(
-      classSelection?.choices.p1.confirmed && classSelection.choices.p2.confirmed
+      classSelection &&
+        getPlayablePlayerIds(this.registry.state).every(
+          (playerId) => classSelection.choices[playerId]?.confirmed
+        )
     );
   }
 
@@ -126,5 +136,6 @@ export class ClassSelectionSystem implements GameSystem {
     state.classSelection.choices.p2.selectedClassIndex = partnerIndex;
     state.classSelection.choices.p2.confirmed = true;
     state.playerClasses.p2 = playerClassDefinitions[partnerIndex].id;
+    this.registry.updateSessionSeat("p2", { classId: state.playerClasses.p2, ready: true });
   }
 }

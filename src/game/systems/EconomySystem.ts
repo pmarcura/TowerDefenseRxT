@@ -9,6 +9,7 @@ import {
 import { getPlayerClassDefinition } from "../data/playerClasses";
 import { getTowerDefinition } from "../data/towers";
 import type { PlayerId } from "../models/types";
+import { getPlayablePlayerIds } from "../utils/players";
 
 export class EconomySystem implements GameSystem {
   constructor(private readonly registry: GameRegistry) {}
@@ -56,14 +57,20 @@ export class EconomySystem implements GameSystem {
 
   getTeamRewardMultiplier(): number {
     const state = this.registry.state;
-    const p1Multiplier =
-      state.economies.p1.rewardMultiplier *
-      getPlayerClassDefinition(state.playerClasses.p1).rewardMultiplier;
-    const p2Multiplier =
-      state.economies.p2.rewardMultiplier *
-      getPlayerClassDefinition(state.playerClasses.p2).rewardMultiplier;
+    const playerIds = getPlayablePlayerIds(state);
 
-    return (p1Multiplier + p2Multiplier) / 2;
+    if (playerIds.length === 0) {
+      return 1;
+    }
+
+    const total = playerIds.reduce((sum, playerId) => {
+      const economy = state.economies[playerId];
+      const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
+
+      return sum + economy.rewardMultiplier * playerClass.rewardMultiplier;
+    }, 0);
+
+    return total / playerIds.length;
   }
 
   private grantTeamCredits(amount: number, scale: number): number {
@@ -73,16 +80,18 @@ export class EconomySystem implements GameSystem {
 
     const credits = Math.max(1, Math.floor(amount * scale * this.getTeamRewardMultiplier()));
 
-    this.registry.state.economies.p1.credits += credits;
-    this.registry.state.economies.p2.credits += credits;
+    for (const playerId of getPlayablePlayerIds(this.registry.state)) {
+      this.registry.state.economies[playerId].credits += credits;
+    }
 
     return credits;
   }
 
 
   rewardBossSigils(amount: number): void {
-    this.registry.state.skillTrees.p1.bossSigils += amount;
-    this.registry.state.skillTrees.p2.bossSigils += amount;
+    for (const playerId of getPlayablePlayerIds(this.registry.state)) {
+      this.registry.state.skillTrees[playerId].bossSigils += amount;
+    }
   }
 
   damageBase(amount: number): void {
@@ -101,8 +110,9 @@ export class EconomySystem implements GameSystem {
       timerMs: 900,
       tone: "danger"
     };
-    this.registry.pushPlayerNotice("p1", "BASE ATINGIDA", `-${amount} HP`, "danger", 1300);
-    this.registry.pushPlayerNotice("p2", "BASE ATINGIDA", `-${amount} HP`, "danger", 1300);
+    for (const playerId of getPlayablePlayerIds(state)) {
+      this.registry.pushPlayerNotice(playerId, "BASE ATINGIDA", `-${amount} HP`, "danger", 1300);
+    }
 
     if (state.baseHp <= 0 && state.phase === "playing") {
       this.registry.pushMessage("Base perdida");

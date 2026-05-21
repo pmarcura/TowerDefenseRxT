@@ -1,4 +1,20 @@
 import type { PlayerId } from "../models/types";
+import { getPlayerNumber } from "../utils/players";
+
+const playerAccentPalette = [
+  0x83f3ff,
+  0xffd36d,
+  0xb4ff72,
+  0xff8ab3,
+  0xb89cff,
+  0x70e0b8,
+  0xff9f68,
+  0x7fa8ff,
+  0xf4fbff,
+  0xe5a7ff,
+  0x8cffd4,
+  0xff6d8b
+] as const;
 
 export const gameDesign = {
   font: {
@@ -81,9 +97,8 @@ export const gameDesign = {
     branchFocused: 0.4
   },
   player: {
-    p1: { accent: 0x83f3ff },
-    p2: { accent: 0xffd36d }
-  } satisfies Record<PlayerId, { accent: number }>
+    palette: playerAccentPalette
+  }
 } as const;
 
 export const toHexColor = (color: number): string =>
@@ -132,4 +147,5 @@ export const gameText = {
   overlayTitle: { size: gameDesign.font.size.overlayTitle, weight: gameDesign.font.weight.strong }
 } satisfies Record<GameUiTextRole, { size: number; weight: string }>;
 
-export const playerColor = (playerId: PlayerId): number => gameDesign.player[playerId].accent;
+export const playerColor = (playerId: PlayerId): number =>
+  playerAccentPalette[(getPlayerNumber(playerId) - 1) % playerAccentPalette.length] ?? playerAccentPalette[0];

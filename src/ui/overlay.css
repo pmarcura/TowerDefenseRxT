@@ -855,6 +855,61 @@
   text-transform: uppercase;
 }
 
+.team-roster {
+  position: absolute;
+  top: 76px;
+  right: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 6px;
+  width: 258px;
+  max-height: 274px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.team-seat {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--player-accent) 34%, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--player-accent) 14%, transparent), transparent),
+    rgba(2, 7, 18, 0.74);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--player-accent) 72%, transparent);
+}
+
+.team-seat.ready {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--player-accent) 24%, transparent), transparent),
+    rgba(9, 27, 22, 0.82);
+}
+
+.team-seat strong,
+.team-seat span,
+.team-seat small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.team-seat strong {
+  color: #edf7ff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 14px;
+}
+
+.team-seat span,
+.team-seat small {
+  color: #8ea4b3;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 12px;
+}
+
 .player-command-panel {
   position: absolute;
   top: 76px;

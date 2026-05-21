@@ -6,6 +6,7 @@ import { GameRegistry } from "../GameRegistry";
 import type { GridPoint, PlayerId } from "../models/types";
 import { RunTelemetry } from "../telemetry/RunTelemetry";
 import { clampGrid, gridKey, gridToWorld, isGridOnPath, isInsideGrid } from "../utils/grid";
+import { getPlayablePlayerIds } from "../utils/players";
 import type { EconomySystem } from "./EconomySystem";
 import type { GameSystem } from "./GameSystem";
 import type { SkillTreeSystem } from "./SkillTreeSystem";
@@ -22,8 +23,12 @@ export class BuildSystem implements GameSystem {
   update(deltaMs: number): void {
     const state = this.registry.state;
 
-    state.cursors.p1.moveCooldownMs = Math.max(0, state.cursors.p1.moveCooldownMs - deltaMs);
-    state.cursors.p2.moveCooldownMs = Math.max(0, state.cursors.p2.moveCooldownMs - deltaMs);
+    for (const playerId of getPlayablePlayerIds(state)) {
+      state.cursors[playerId].moveCooldownMs = Math.max(
+        0,
+        state.cursors[playerId].moveCooldownMs - deltaMs
+      );
+    }
   }
 
   moveCursor(playerId: PlayerId, direction: GridPoint): void {
@@ -82,6 +87,10 @@ export class BuildSystem implements GameSystem {
     const state = this.registry.state;
 
     if (state.phase !== "playing") {
+      return false;
+    }
+
+    if (!getPlayablePlayerIds(state).includes(playerId)) {
       return false;
     }
 

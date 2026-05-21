@@ -8,6 +8,7 @@ import {
 } from "../utils/damageFeedback";
 import { buildPathWorldPoints } from "../utils/grid";
 import { distance, moveToward } from "../utils/math";
+import { getPlayablePlayerIds } from "../utils/players";
 import type { EconomySystem } from "./EconomySystem";
 import type { GameSystem } from "./GameSystem";
 
@@ -40,7 +41,7 @@ export class EnemySystem implements GameSystem {
       recentDamageTimerMs: 0,
       recentDamageColor: definition.color,
       recentDamageWasCritical: false,
-      recentDamageByPlayer: createEmptyDamageAccumulators(),
+      recentDamageByPlayer: createEmptyDamageAccumulators(getPlayablePlayerIds(this.registry.state)),
       lastHitFlashMs: 0,
       alive: true
     };

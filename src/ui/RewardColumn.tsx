@@ -2,14 +2,10 @@ import { getSkillDefinition, getSkillRank } from "../game/data/skills";
 import { getPlayerClassDefinition } from "../game/data/playerClasses";
 import type { PlayerId } from "../game/models/types";
 import { rewardBridge } from "../game/bridge/RewardBridge";
+import { getPlayerLabel } from "../game/utils/players";
 import { RewardOption } from "./RewardOption";
 
-const playerLabels: Record<PlayerId, string> = {
-  p1: "P1",
-  p2: "P2"
-};
-
-const playerKeyLabels: Record<PlayerId, string> = {
+const playerKeyLabels: Partial<Record<PlayerId, string>> = {
   p1: "Z",
   p2: "Enter"
 };
@@ -28,10 +24,10 @@ export const RewardColumn = ({ playerId }: { playerId: PlayerId }) => {
       <div className="reward-column-head">
         <div>
           <h2>
-            {playerLabels[playerId]} {playerClass.shortName}
+            {getPlayerLabel(playerId)} {playerClass.shortName}
           </h2>
           <p>
-            Sigilos {skillTree.bossSigils} · Atalho {playerKeyLabels[playerId]}
+            Sigilos {skillTree.bossSigils} · Atalho {playerKeyLabels[playerId] ?? "Auto"}
           </p>
         </div>
         <span className={isDone ? "reward-status reward-status-done" : "reward-status"}>
@@ -49,7 +45,7 @@ export const RewardColumn = ({ playerId }: { playerId: PlayerId }) => {
               rank={getSkillRank(skillTree.skillRanks, skillId)}
               selected={selectedSkillId === skillId}
               disabled={isDone}
-              hotkey={index === 0 ? playerKeyLabels[playerId] : null}
+              hotkey={index === 0 ? playerKeyLabels[playerId] ?? null : null}
             />
           ))
         ) : (

@@ -1,5 +1,6 @@
 import { MINIMUM_DAMAGE, PROJECTILE_HIT_RADIUS } from "../config/constants";
 import { getEnemyDefinition } from "../data/enemies";
+import { playerColor } from "../design/gameDesignSystem";
 import { getTowerBranchEffectTotals } from "../data/towerBranches";
 import { getTowerDefinition } from "../data/towers";
 import {
@@ -275,7 +276,7 @@ export class ProjectileSystem implements GameSystem {
   }
 
   private getPlayerDamageColor(playerId: PlayerId): number {
-    return playerId === "p1" ? 0x83f3ff : 0xffd36d;
+    return playerColor(playerId);
   }
 
   private addTowerDamage(towerId: string, dealtDamage: number): void {

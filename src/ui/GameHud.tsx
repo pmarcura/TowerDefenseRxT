@@ -5,8 +5,10 @@ import { getTowerDefinition, getTowerDefinitionsForClass } from "../game/data/to
 import { towerProgression } from "../game/data/towerProgression";
 import { getWaveDefinition } from "../game/data/waves";
 import { gameUiBridge } from "../game/bridge/RewardBridge";
+import { playerColor } from "../game/design/gameDesignSystem";
 import type { GameState, PlayerId, TowerDefinition, TowerEntity } from "../game/models/types";
 import { gridKey, isGridOnPath, isInsideGrid } from "../game/utils/grid";
+import { getLocalPlayerIds, getPlayablePlayerIds, getPlayerLabel } from "../game/utils/players";
 
 type GameHudProps = {
   state: GameState;
@@ -17,13 +19,8 @@ type BuildStatus =
   | { tone: "blocked"; title: string; detail: string }
   | { tone: "short"; title: string; detail: string };
 
-const playerLabels: Record<PlayerId, string> = {
-  p1: "P1",
-  p2: "P2"
-};
-
 const playerControls: Record<
-  PlayerId,
+  string,
   { move: string; cycle: string; build: string; inspect: string; ready: string }
 > = {
   p1: { move: "WASD", cycle: "Q/E ou 1-9", build: "SPACE", inspect: "F", ready: "R" },
@@ -42,6 +39,9 @@ export const GameHud = ({ state }: GameHudProps) => {
   }
 
   const wave = getWaveDefinition(state.wave.currentWaveIndex);
+  const playerIds = getPlayablePlayerIds(state);
+  const localPlayerIds = getLocalPlayerIds(state.session);
+  const primaryPlayerId = localPlayerIds[0] ?? playerIds[0];
 
   return (
     <aside className="game-hud" aria-label="HUD de jogo">
@@ -57,14 +57,18 @@ export const GameHud = ({ state }: GameHudProps) => {
         </div>
         {!state.wave.active && state.phase === "playing" ? (
           <div className="ready-sync-strip">
-            <span className={state.wave.readyPlayers.p1 ? "ready" : ""}>P1</span>
-            <span className={state.wave.readyPlayers.p2 ? "ready" : ""}>P2</span>
+            {playerIds.map((playerId) => (
+              <span key={playerId} className={state.wave.readyPlayers[playerId] ? "ready" : ""}>
+                {getPlayerLabel(playerId)}
+              </span>
+            ))}
           </div>
         ) : null}
       </section>
 
-      <PlayerCommandPanel playerId="p1" state={state} />
-      <PlayerCommandPanel playerId="p2" state={state} />
+      <TeamRoster state={state} playerIds={playerIds} />
+
+      {primaryPlayerId ? <PlayerCommandPanel playerId={primaryPlayerId} state={state} /> : null}
 
       <section className="hud-quick-manual" aria-label="Ajuda rápida">
         <span>1. Mova o cursor</span>
@@ -75,6 +79,28 @@ export const GameHud = ({ state }: GameHudProps) => {
     </aside>
   );
 };
+
+const TeamRoster = ({ state, playerIds }: { state: GameState; playerIds: PlayerId[] }) => (
+  <section className="team-roster" aria-label="Time online">
+    {playerIds.map((playerId) => {
+      const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
+      const seat = state.session.seats.find((candidate) => candidate.id === playerId);
+      const accent = `#${playerColor(playerId).toString(16).padStart(6, "0")}`;
+
+      return (
+        <div
+          key={playerId}
+          className={state.wave.readyPlayers[playerId] ? "team-seat ready" : "team-seat"}
+          style={{ "--player-accent": accent } as CSSProperties}
+        >
+          <strong>{seat?.displayName ?? getPlayerLabel(playerId)}</strong>
+          <span>{playerClass.shortName}</span>
+          <small>{state.economies[playerId].credits} CRED</small>
+        </div>
+      );
+    })}
+  </section>
+);
 
 const PlayerCommandPanel = ({ playerId, state }: { playerId: PlayerId; state: GameState }) => {
   const cursor = state.cursors[playerId];
@@ -99,11 +125,11 @@ const PlayerCommandPanel = ({ playerId, state }: { playerId: PlayerId; state: Ga
           "--player-secondary": classSecondary
         } as CSSProperties
       }
-      aria-label={`Painel ${playerLabels[playerId]}`}
+      aria-label={`Painel ${getPlayerLabel(playerId)}`}
     >
       <header className="player-command-head">
         <div>
-          <span>{playerLabels[playerId]}</span>
+          <span>{getPlayerLabel(playerId)}</span>
           <strong>{playerClass.shortName}</strong>
           <small>{playerClass.visualMotif}</small>
         </div>
@@ -124,7 +150,7 @@ const PlayerCommandPanel = ({ playerId, state }: { playerId: PlayerId; state: Ga
           type="button"
           onClick={() => gameUiBridge.openTowerInspection(playerId)}
         >
-          INSPECIONAR TORRE ({playerControls[playerId].inspect})
+          INSPECIONAR TORRE ({getControlLabels(playerId).inspect})
         </button>
       ) : null}
 
@@ -137,7 +163,7 @@ const PlayerCommandPanel = ({ playerId, state }: { playerId: PlayerId; state: Ga
         >
           {state.wave.readyPlayers[playerId]
             ? "PRONTO"
-            : `DAR PRONTO (${playerControls[playerId].ready})`}
+            : `DAR PRONTO (${getControlLabels(playerId).ready})`}
         </button>
       ) : null}
 
@@ -161,10 +187,10 @@ const PlayerCommandPanel = ({ playerId, state }: { playerId: PlayerId; state: Ga
       </section>
 
       <footer className="player-controls">
-        <span>{playerControls[playerId].move} mover</span>
-        <span>{playerControls[playerId].cycle} torre</span>
-        <span>{playerControls[playerId].inspect} inspecionar</span>
-        <strong>{playerControls[playerId].build} construir</strong>
+        <span>{getControlLabels(playerId).move} mover</span>
+        <span>{getControlLabels(playerId).cycle} torre</span>
+        <span>{getControlLabels(playerId).inspect} inspecionar</span>
+        <strong>{getControlLabels(playerId).build} construir</strong>
       </footer>
     </section>
   );
@@ -226,6 +252,15 @@ const getTowerKeyLabel = (playerId: PlayerId, index: number): string => {
   return index === 0 ? "Pg" : "Pg";
 };
 
+const getControlLabels = (playerId: PlayerId) =>
+  playerControls[playerId] ?? {
+    move: "ONLINE",
+    cycle: "ONLINE",
+    build: "ONLINE",
+    inspect: "ONLINE",
+    ready: "ONLINE"
+  };
+
 const Metric = ({ label, value }: { label: string; value: number }) => (
   <div>
     <span>{label}</span>
@@ -251,7 +286,7 @@ const getBuildStatus = (
   const availableCredits = state.economies[playerId].credits;
 
   if (!state.wave.active && state.wave.readyPlayers[playerId]) {
-    return { tone: "ready", title: "VOCE ESTA PRONTO", detail: "aguardando o outro jogador" };
+    return { tone: "ready", title: "VOCE ESTA PRONTO", detail: "aguardando o time ou timer" };
   }
 
   if (!isInsideGrid(cursor.grid, state.activeMap)) {
@@ -321,14 +356,15 @@ const getWaveStatus = (state: GameState): string => {
     return "run concluida";
   }
 
-  if (state.wave.readyPlayers.p1 && state.wave.readyPlayers.p2) {
+  const playerIds = getPlayablePlayerIds(state);
+
+  if (playerIds.length > 0 && playerIds.every((playerId) => state.wave.readyPlayers[playerId])) {
     return `entrando em ${(state.wave.nextWaveInMs / 1000).toFixed(1)}s`;
   }
 
-  const waitingFor = [
-    state.wave.readyPlayers.p1 ? null : "P1",
-    state.wave.readyPlayers.p2 ? null : "P2"
-  ].filter(Boolean);
+  const waitingFor = playerIds
+    .filter((playerId) => !state.wave.readyPlayers[playerId])
+    .map(getPlayerLabel);
 
   return `aguardando ${waitingFor.join(" + ")}`;
 };

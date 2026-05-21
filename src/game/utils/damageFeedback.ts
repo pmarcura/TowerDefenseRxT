@@ -5,10 +5,12 @@ export const DAMAGE_ACCUMULATION_MS = 980;
 export const CRITICAL_ACCUMULATION_MS = 1120;
 export const DAMAGE_PULSE_MS = 180;
 
-export const createEmptyDamageAccumulators = (): Record<PlayerId, EnemyPlayerDamageAccumulator> => ({
-  p1: createEmptyDamageAccumulator("p1"),
-  p2: createEmptyDamageAccumulator("p2")
-});
+export const createEmptyDamageAccumulators = (
+  playerIds: readonly PlayerId[]
+): Record<PlayerId, EnemyPlayerDamageAccumulator> =>
+  Object.fromEntries(
+    playerIds.map((playerId) => [playerId, createEmptyDamageAccumulator(playerId)])
+  ) as Record<PlayerId, EnemyPlayerDamageAccumulator>;
 
 export const createEmptyDamageAccumulator = (playerId: PlayerId): EnemyPlayerDamageAccumulator => ({
   total: 0,
@@ -25,7 +27,9 @@ export const addEnemyDamageFeedback = (
   amount: number,
   isCritical: boolean
 ): void => {
-  const accumulator = enemy.recentDamageByPlayer[playerId];
+  const accumulator =
+    enemy.recentDamageByPlayer[playerId] ?? createEmptyDamageAccumulator(playerId);
+  enemy.recentDamageByPlayer[playerId] = accumulator;
 
   accumulator.total += amount;
   accumulator.timerMs = DAMAGE_ACCUMULATION_MS;
@@ -55,7 +59,7 @@ export const updateEnemyDamageFeedback = (enemy: EnemyEntity, deltaMs: number): 
     enemy.recentDamageWasCritical = false;
   }
 
-  for (const playerId of ["p1", "p2"] as const) {
+  for (const playerId of Object.keys(enemy.recentDamageByPlayer) as PlayerId[]) {
     const accumulator = enemy.recentDamageByPlayer[playerId];
 
     accumulator.timerMs = Math.max(0, accumulator.timerMs - deltaMs);

@@ -1,4 +1,5 @@
 import { getEnemyDefinition } from "../data/enemies";
+import { playerColor } from "../design/gameDesignSystem";
 import { getTowerDefinition } from "../data/towers";
 import { getTowerXpToNextLevel, towerProgression } from "../data/towerProgression";
 import { GameRegistry } from "../GameRegistry";
@@ -162,7 +163,7 @@ export class AllySystem implements GameSystem {
   }
 
   private getPlayerDamageColor(playerId: PlayerId): number {
-    return playerId === "p1" ? 0x83f3ff : 0xffd36d;
+    return playerColor(playerId);
   }
 
   private moveAgainstRoute(ally: AllyEntity, deltaMs: number): void {

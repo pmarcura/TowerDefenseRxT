@@ -1,4 +1,6 @@
-export type PlayerId = "p1" | "p2";
+import type { MultiplayerSessionConfig } from "../network/sessionTypes";
+
+export type PlayerId = `p${number}`;
 
 export type GameSessionMode = "solo-ai" | "local-coop" | "online-lobby-preview";
 
@@ -172,7 +174,7 @@ export type MapDefinition = {
   readonly origin: Vec2;
   readonly paths: readonly (readonly GridPoint[])[];
   readonly baseHp: number;
-  readonly startingCreditsByPlayer: Record<PlayerId, number>;
+  readonly startingCredits: number;
 };
 
 export type PlayerClassDefinition = {
@@ -528,6 +530,7 @@ export type GameState = {
   phase: GamePhase;
   previousPhase: GamePhase | null;
   sessionMode: GameSessionMode;
+  session: MultiplayerSessionConfig;
   debug: boolean;
   settings: GameSettings;
   runSummary: RunStats | null;

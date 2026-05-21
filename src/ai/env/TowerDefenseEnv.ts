@@ -47,6 +47,7 @@ import type {
   WaveGroupDefinition
 } from "../../game/models/types";
 import { gridKey, isGridOnPath, isInsideGrid } from "../../game/utils/grid";
+import { clampPlayerCount, createPlayerId, getPlayerNumber } from "../../game/utils/players";
 import { Rng } from "./Rng";
 import { checkHeadlessInvariants } from "./invariants";
 import type {
@@ -69,12 +70,17 @@ type TowerContribution = {
 };
 
 const ENV_VERSION = "aegis-headless-v1";
-const playerIds: readonly PlayerId[] = ["p1", "p2"];
 const DEFAULT_TARGET_WAVE_COUNT = 20;
 
 export class TowerDefenseEnv {
   private rng = new Rng(1);
-  private stateInternal: HeadlessGameState = createInitialState(1, {}, false, DEFAULT_TARGET_WAVE_COUNT);
+  private stateInternal: HeadlessGameState = createInitialState(
+    1,
+    {},
+    undefined,
+    false,
+    DEFAULT_TARGET_WAVE_COUNT
+  );
 
   get state(): HeadlessGameState {
     return cloneState(this.stateInternal);
@@ -86,6 +92,7 @@ export class TowerDefenseEnv {
     this.stateInternal = createInitialState(
       seed,
       options.players ?? {},
+      options.playerCount,
       options.debug ?? false,
       options.targetWaveCount ?? DEFAULT_TARGET_WAVE_COUNT
     );
@@ -581,7 +588,7 @@ export class TowerDefenseEnv {
     }
 
     if (wave.isBoss && wave.bossRewardSigils) {
-      for (const playerId of playerIds) {
+      for (const playerId of this.getPlayerIds()) {
         this.stateInternal.players[playerId].sigils += wave.bossRewardSigils;
       }
 
@@ -875,7 +882,7 @@ export class TowerDefenseEnv {
 
     const credits = Math.max(1, Math.floor(amount * scale * this.getTeamRewardMultiplier()));
 
-    for (const playerId of playerIds) {
+    for (const playerId of this.getPlayerIds()) {
       this.stateInternal.players[playerId].credits += credits;
     }
 
@@ -898,7 +905,7 @@ export class TowerDefenseEnv {
   }
 
   private getTeamRewardMultiplier(): number {
-    const multipliers = playerIds.map((playerId) => {
+    const multipliers = this.getPlayerIds().map((playerId) => {
       const player = this.stateInternal.players[playerId];
       const playerClass = getPlayerClassDefinition(player.classId);
       const skills = getSkillEffectTotals(player.id, player.skillRanks);
@@ -913,10 +920,12 @@ export class TowerDefenseEnv {
     this.stateInternal.phase = "reward-selection";
     this.stateInternal.rewardSelection = {
       bossWaveId: wave.id,
-      choices: {
-        p1: createRewardChoice(this.stateInternal.players.p1, wave.id),
-        p2: createRewardChoice(this.stateInternal.players.p2, wave.id)
-      }
+      choices: Object.fromEntries(
+        this.getPlayerIds().map((playerId) => [
+          playerId,
+          createRewardChoice(this.stateInternal.players[playerId], wave.id)
+        ])
+      ) as Record<PlayerId, ReturnType<typeof createRewardChoice>>
     };
     events.push({
       kind: "reward-opened",
@@ -936,7 +945,7 @@ export class TowerDefenseEnv {
       return true;
     }
 
-    return playerIds.every((playerId) => {
+    return this.getPlayerIds().every((playerId) => {
       const choice = reward.choices[playerId];
 
       return choice.skillIds.length === 0 || choice.selectedSkillId !== null;
@@ -956,13 +965,19 @@ export class TowerDefenseEnv {
     this.stateInternal.phase = "preparation";
     this.stateInternal.readyCountdownMs = WAVE_AUTO_START_MS;
 
-    for (const playerId of playerIds) {
+    for (const playerId of this.getPlayerIds()) {
       this.stateInternal.players[playerId].ready = false;
     }
   }
 
   private areBothReady(): boolean {
-    return playerIds.every((playerId) => this.stateInternal.players[playerId].ready);
+    const playerIds = this.getPlayerIds();
+
+    return playerIds.length > 0 && playerIds.every((playerId) => this.stateInternal.players[playerId].ready);
+  }
+
+  private getPlayerIds(): PlayerId[] {
+    return Object.keys(this.stateInternal.players) as PlayerId[];
   }
 
   private getPlayer(playerId: PlayerId, errors: ActionError[]): HeadlessPlayerState | null {
@@ -1005,34 +1020,45 @@ export class TowerDefenseEnv {
 const createInitialState = (
   seed: number,
   requestedPlayers: Partial<Record<PlayerId, string>>,
+  requestedPlayerCount: number | undefined,
   debug: boolean,
   targetWaveCount: number
-): HeadlessGameState => ({
-  version: ENV_VERSION,
-  seed,
-  mapId: mapDefinition.id,
-  phase: "preparation",
-  previousPhase: null,
-  debug,
-  tick: 0,
-  elapsedMs: 0,
-  currentWaveIndex: 0,
-  targetWaveCount: Math.max(1, Math.floor(targetWaveCount)),
-  baseHp: mapDefinition.baseHp,
-  readyCountdownMs: WAVE_AUTO_START_MS,
-  players: {
-    p1: createPlayer("p1", requestedPlayers.p1 ?? playerClassDefinitions[0].id),
-    p2: createPlayer("p2", requestedPlayers.p2 ?? playerClassDefinitions[1].id)
-  },
-  towers: [],
-  rewardSelection: null,
-  waveLog: []
-});
+): HeadlessGameState => {
+  const playerCount = resolveHeadlessPlayerCount(requestedPlayers, requestedPlayerCount);
+  const playerIds = Array.from({ length: playerCount }, (_, index) => createPlayerId(index + 1));
+
+  return {
+    version: ENV_VERSION,
+    seed,
+    mapId: mapDefinition.id,
+    phase: "preparation",
+    previousPhase: null,
+    debug,
+    tick: 0,
+    elapsedMs: 0,
+    currentWaveIndex: 0,
+    targetWaveCount: Math.max(1, Math.floor(targetWaveCount)),
+    baseHp: mapDefinition.baseHp,
+    readyCountdownMs: WAVE_AUTO_START_MS,
+    players: Object.fromEntries(
+      playerIds.map((playerId, index) => [
+        playerId,
+        createPlayer(
+          playerId,
+          requestedPlayers[playerId] ?? playerClassDefinitions[index % playerClassDefinitions.length].id
+        )
+      ])
+    ) as Record<PlayerId, HeadlessPlayerState>,
+    towers: [],
+    rewardSelection: null,
+    waveLog: []
+  };
+};
 
 const createPlayer = (id: PlayerId, classId: string): HeadlessPlayerState => ({
   id,
   classId,
-  credits: mapDefinition.startingCreditsByPlayer[id],
+  credits: mapDefinition.startingCredits,
   sigils: 0,
   ready: false,
   skillRanks: {},
@@ -1040,6 +1066,22 @@ const createPlayer = (id: PlayerId, classId: string): HeadlessPlayerState => ({
   kills: 0,
   towersBuilt: 0
 });
+
+const resolveHeadlessPlayerCount = (
+  requestedPlayers: Partial<Record<PlayerId, string>>,
+  requestedPlayerCount?: number
+): number => {
+  if (requestedPlayerCount !== undefined) {
+    return clampPlayerCount(requestedPlayerCount);
+  }
+
+  const maxRequestedId = (Object.keys(requestedPlayers) as PlayerId[]).reduce(
+    (max, playerId) => Math.max(max, getPlayerNumber(playerId)),
+    0
+  );
+
+  return clampPlayerCount(Math.max(2, maxRequestedId));
+};
 
 const createRewardChoice = (
   player: HeadlessPlayerState,

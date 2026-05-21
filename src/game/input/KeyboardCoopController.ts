@@ -7,6 +7,7 @@ import type { BuildSystem } from "../systems/BuildSystem";
 import type { ClassSelectionSystem } from "../systems/ClassSelectionSystem";
 import type { SkillTreeSystem } from "../systems/SkillTreeSystem";
 import { isInsideGrid, worldToGrid } from "../utils/grid";
+import { getLocalPlayerIds, getPlayablePlayerIds } from "../utils/players";
 
 type PlayerKeys = {
   up: Phaser.Input.Keyboard.Key;
@@ -131,22 +132,27 @@ export class KeyboardCoopController {
       return;
     }
 
-    this.updatePlayer("p1", this.p1Keys);
+    const localPlayerIds = getLocalPlayerIds(this.registry.state.session);
 
-    if (this.registry.state.sessionMode !== "solo-ai") {
+    if (localPlayerIds.includes("p1")) {
+      this.updatePlayer("p1", this.p1Keys);
+    }
+
+    if (localPlayerIds.includes("p2")) {
       this.updatePlayer("p2", this.p2Keys);
     }
   }
 
   private updateRewardSelection(): void {
     let selected = false;
+    const localPlayerIds = getLocalPlayerIds(this.registry.state.session);
 
-    if (Phaser.Input.Keyboard.JustDown(this.p1Keys.buySkill)) {
+    if (localPlayerIds.includes("p1") && Phaser.Input.Keyboard.JustDown(this.p1Keys.buySkill)) {
       selected = this.skillTreeSystem.selectHighlightedReward("p1") || selected;
     }
 
     if (
-      this.registry.state.sessionMode !== "solo-ai" &&
+      localPlayerIds.includes("p2") &&
       Phaser.Input.Keyboard.JustDown(this.p2Keys.buySkill)
     ) {
       selected = this.skillTreeSystem.selectHighlightedReward("p2") || selected;
@@ -169,17 +175,21 @@ export class KeyboardCoopController {
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.debugCreditsKey)) {
-      state.economies.p1.credits += 100;
-      state.economies.p2.credits += 100;
-      this.registry.pushPlayerNotice("p1", "+100 DEBUG", "creditos adicionados", "info", 1200);
-      this.registry.pushPlayerNotice("p2", "+100 DEBUG", "creditos adicionados", "info", 1200);
+      for (const playerId of getPlayablePlayerIds(state)) {
+        state.economies[playerId].credits += 100;
+        this.registry.pushPlayerNotice(playerId, "+100 DEBUG", "creditos adicionados", "info", 1200);
+      }
     }
   }
 
   private updateClassSelection(): void {
-    this.updatePlayerClassSelection("p1", this.p1Keys);
+    const localPlayerIds = getLocalPlayerIds(this.registry.state.session);
 
-    if (this.registry.state.sessionMode !== "solo-ai") {
+    if (localPlayerIds.includes("p1")) {
+      this.updatePlayerClassSelection("p1", this.p1Keys);
+    }
+
+    if (localPlayerIds.includes("p2")) {
       this.updatePlayerClassSelection("p2", this.p2Keys);
     }
   }

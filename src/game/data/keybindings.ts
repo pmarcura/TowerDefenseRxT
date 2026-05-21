@@ -8,7 +8,7 @@ export type PlayerKeybindingHelp = {
   readonly buySkill: string;
 };
 
-export const keybindingHelp: Record<PlayerId, PlayerKeybindingHelp> = {
+export const keybindingHelp: Partial<Record<PlayerId, PlayerKeybindingHelp>> = {
   p1: {
     playerId: "p1",
     movement: "WASD",

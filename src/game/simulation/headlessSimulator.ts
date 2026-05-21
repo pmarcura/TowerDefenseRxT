@@ -398,8 +398,8 @@ const createRunState = (
     rng,
     baseHp: mapDefinition.baseHp,
     players: {
-      p1: createPlayer("p1", p1Class, p1Profile, mapDefinition.startingCreditsByPlayer.p1),
-      p2: createPlayer("p2", p2Class, p2Profile, mapDefinition.startingCreditsByPlayer.p2)
+      p1: createPlayer("p1", p1Class, p1Profile, mapDefinition.startingCredits),
+      p2: createPlayer("p2", p2Class, p2Profile, mapDefinition.startingCredits)
     },
     towers: [],
     nextTowerId: 1

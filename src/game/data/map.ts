@@ -1,9 +1,6 @@
 import type { MapDefinition } from "../models/types";
 
-const startingCreditsByPlayer = {
-  p1: 132,
-  p2: 132
-} as const;
+const startingCredits = 132;
 
 export const mapStages: readonly MapDefinition[] = [
   {
@@ -14,7 +11,7 @@ export const mapStages: readonly MapDefinition[] = [
     tileSize: 43,
     origin: { x: 253, y: 126 },
     baseHp: 24,
-    startingCreditsByPlayer,
+    startingCredits,
     paths: [
       [
         { col: 0, row: 4 },
@@ -48,7 +45,7 @@ export const mapStages: readonly MapDefinition[] = [
     tileSize: 43,
     origin: { x: 253, y: 126 },
     baseHp: 24,
-    startingCreditsByPlayer,
+    startingCredits,
     paths: [
       [
         { col: 0, row: 4 },
@@ -83,7 +80,7 @@ export const mapStages: readonly MapDefinition[] = [
     tileSize: 43,
     origin: { x: 253, y: 126 },
     baseHp: 24,
-    startingCreditsByPlayer,
+    startingCredits,
     paths: [
       [
         { col: 0, row: 4 },
@@ -140,7 +137,7 @@ export const mapStages: readonly MapDefinition[] = [
     tileSize: 43,
     origin: { x: 253, y: 126 },
     baseHp: 24,
-    startingCreditsByPlayer,
+    startingCredits,
     paths: [
       [
         { col: 0, row: 4 },
@@ -198,7 +195,7 @@ export const mapStages: readonly MapDefinition[] = [
     tileSize: 43,
     origin: { x: 253, y: 126 },
     baseHp: 24,
-    startingCreditsByPlayer,
+    startingCredits,
     paths: [
       [
         { col: 0, row: 4 },
@@ -306,7 +303,7 @@ const createProceduralMapStage = (stageIndex: number): MapDefinition => {
       y: Math.max(96, 126 - Math.max(0, rows - 10) * 10)
     },
     baseHp: mapDefinition.baseHp + Math.floor(extraIndex / 3),
-    startingCreditsByPlayer,
+    startingCredits,
     paths
   };
 };

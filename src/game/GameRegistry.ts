@@ -29,8 +29,18 @@ import type {
   TowerAutoBuildId,
   TowerUpgradeBranchId
 } from "./models/types";
+import type { MultiplayerSessionConfig } from "./network/sessionTypes";
+import { createDefaultMultiplayerSession } from "./network/sessionTypes";
 import { RunTelemetry } from "./telemetry/RunTelemetry";
 import { clampGrid, gridKey, gridToWorld, isGridOnPath, isInsideGrid } from "./utils/grid";
+import {
+  createPlayerRecord,
+  getLocalPlayerIds,
+  getPlayablePlayerIds,
+  getPlayerLabel,
+  getRemoteOrAiPlayerIds,
+  getSessionPlayerIds
+} from "./utils/players";
 
 const SETTINGS_STORAGE_KEY = "aegis-sacra-settings";
 const runTelemetry = RunTelemetry.getInstance();
@@ -62,108 +72,90 @@ const loadSettings = (): GameSettings => {
 };
 
 const createInitialCursor = (selectedTowerIndex: number) => ({
-  grid: { col: selectedTowerIndex === 0 ? 2 : 11, row: selectedTowerIndex === 0 ? 6 : 2 },
+  grid: {
+    col: selectedTowerIndex % 2 === 0 ? 2 + selectedTowerIndex : 11,
+    row: selectedTowerIndex % 2 === 0 ? 6 : 2 + Math.floor(selectedTowerIndex / 2)
+  },
   selectedTowerIndex,
   moveCooldownMs: 0
 });
 
-const createInitialState = (sessionMode: GameSessionMode = "solo-ai"): GameState => ({
-  phase: "menu",
-  previousPhase: null,
-  sessionMode,
-  debug: DEBUG_DEFAULT_ENABLED,
-  settings: loadSettings(),
-  runSummary: null,
-  aiPartner: {
-    active: sessionMode === "solo-ai",
-    decisionsLogged: 0,
-    lastDecision: null
-  },
-  presentationEvents: [],
-  activeMap: mapDefinition,
-  economies: {
-    p1: {
-      credits: mapDefinition.startingCreditsByPlayer.p1,
-      rewardMultiplier: 1
+const createInitialState = (
+  session: MultiplayerSessionConfig = createDefaultMultiplayerSession()
+): GameState => {
+  const playerIds = getSessionPlayerIds(session);
+
+  return {
+    phase: "menu",
+    previousPhase: null,
+    sessionMode: session.mode,
+    session,
+    debug: DEBUG_DEFAULT_ENABLED,
+    settings: loadSettings(),
+    runSummary: null,
+    aiPartner: {
+      active: session.mode === "solo-ai",
+      decisionsLogged: 0,
+      lastDecision: null
     },
-    p2: {
-      credits: mapDefinition.startingCreditsByPlayer.p2,
+    presentationEvents: [],
+    activeMap: mapDefinition,
+    economies: createPlayerRecord(playerIds, () => ({
+      credits: mapDefinition.startingCredits,
       rewardMultiplier: 1
-    }
-  },
-  combatStats: {
-    p1: {
+    })),
+    combatStats: createPlayerRecord(playerIds, () => ({
       totalDamageDealt: 0,
       waveDamageDealt: 0,
       kills: 0,
       towersBuilt: 0
-    },
-    p2: {
-      totalDamageDealt: 0,
-      waveDamageDealt: 0,
-      kills: 0,
-      towersBuilt: 0
-    }
-  },
-  skillTrees: {
-    p1: {
+    })),
+    skillTrees: createPlayerRecord(playerIds, () => ({
       bossSigils: 0,
       skillRanks: {}
+    })),
+    rewardSelection: null,
+    towerInspection: null,
+    classSelection: null,
+    playerNotices: createPlayerRecord(playerIds, () => null),
+    baseHp: mapDefinition.baseHp,
+    baseHitFlashMs: 0,
+    lastBaseDamage: 0,
+    enemies: [],
+    towers: [],
+    allies: [],
+    ritualZones: [],
+    projectiles: [],
+    cursors: createPlayerRecord(playerIds, (_playerId, index) => createInitialCursor(index)),
+    playerClasses: createPlayerRecord(playerIds, (_playerId, index) => {
+      const definition = playerClassDefinitions[index % playerClassDefinitions.length];
+
+      return definition.id;
+    }),
+    wave: {
+      currentWaveIndex: 0,
+      active: false,
+      nextWaveInMs: 0,
+      readyPlayers: createPlayerRecord(playerIds, () => false),
+      completed: false,
+      notice: null,
+      snapshot: {
+        groups: [],
+        totalSpawnsRemaining: 0,
+        aliveEnemies: 0,
+        activePathIndexes: []
+      }
     },
-    p2: {
-      bossSigils: 0,
-      skillRanks: {}
-    }
-  },
-  rewardSelection: null,
-  towerInspection: null,
-  classSelection: null,
-  playerNotices: {
-    p1: null,
-    p2: null
-  },
-  baseHp: mapDefinition.baseHp,
-  baseHitFlashMs: 0,
-  lastBaseDamage: 0,
-  enemies: [],
-  towers: [],
-  allies: [],
-  ritualZones: [],
-  projectiles: [],
-  cursors: {
-    p1: createInitialCursor(0),
-    p2: createInitialCursor(1)
-  },
-  playerClasses: {
-    p1: playerClassDefinitions[0].id,
-    p2: playerClassDefinitions[1].id
-  },
-  wave: {
-    currentWaveIndex: 0,
-    active: false,
-    nextWaveInMs: 0,
-    readyPlayers: {
-      p1: false,
-      p2: false
-    },
-    completed: false,
-    notice: null,
-    snapshot: {
-      groups: [],
-      totalSpawnsRemaining: 0,
-      aliveEnemies: 0,
-      activePathIndexes: []
-    }
-  },
-  messages: [],
-  elapsedMs: 0,
-  nextId: 1
-});
+    messages: [],
+    elapsedMs: 0,
+    nextId: 1
+  };
+};
 
 export class GameRegistry {
   private static instance: GameRegistry | null = null;
   private readonly listeners = new Set<() => void>();
-  private nextSessionMode: GameSessionMode = "solo-ai";
+  private nextSession = createDefaultMultiplayerSession();
 
   state: GameState = createInitialState();
 
@@ -176,41 +168,58 @@ export class GameRegistry {
   }
 
   resetForMenu(): void {
-    this.state = createInitialState(this.nextSessionMode);
+    this.state = createInitialState(this.nextSession);
     this.notifyChange();
   }
 
   setNextSessionMode(sessionMode: GameSessionMode): void {
-    this.nextSessionMode = sessionMode;
+    const playerCount = sessionMode === "online-lobby-preview" ? 4 : 2;
+    this.nextSession = createDefaultMultiplayerSession(playerCount, this.nextSession.seed, sessionMode);
     this.state.sessionMode = sessionMode;
+    this.state.session = this.nextSession;
     this.notifyChange();
   }
 
   getNextSessionMode(): GameSessionMode {
-    return this.nextSessionMode;
+    return this.nextSession.mode;
   }
 
-  startRun(sessionMode = this.nextSessionMode): void {
-    this.nextSessionMode = sessionMode;
-    this.state = createInitialState(sessionMode);
+  startRun(sessionMode = this.nextSession.mode, sessionConfig?: MultiplayerSessionConfig): void {
+    this.nextSession =
+      sessionConfig ??
+      (sessionMode === this.nextSession.mode
+        ? this.nextSession
+        : createDefaultMultiplayerSession(
+            sessionMode === "online-lobby-preview" ? 4 : 2,
+            this.nextSession.seed,
+            sessionMode
+          ));
+    this.state = createInitialState(this.nextSession);
     this.state.phase = "class-selection";
-    const p1ClassIndex = 0;
-    const p2ClassIndex = this.getComplementaryClassIndex(p1ClassIndex);
+    const localPlayerIds = getLocalPlayerIds(this.nextSession);
     this.state.classSelection = {
-      choices: {
-        p1: {
-          selectedClassIndex: p1ClassIndex,
-          confirmed: false
-        },
-        p2: {
-          selectedClassIndex: p2ClassIndex,
-          confirmed: sessionMode === "solo-ai"
-        }
-      }
+      choices: createPlayerRecord(getPlayablePlayerIds(this.state), (playerId, index) => ({
+        selectedClassIndex: index % playerClassDefinitions.length,
+        confirmed: sessionMode === "solo-ai" ? playerId !== "p1" : !localPlayerIds.includes(playerId)
+      }))
     };
-    this.state.playerClasses.p1 = playerClassDefinitions[p1ClassIndex].id;
-    this.state.playerClasses.p2 = playerClassDefinitions[p2ClassIndex].id;
-    runTelemetry.startRun(this.state, sessionMode === "solo-ai" ? "local-ai" : "local-human");
+    for (const [index, playerId] of getPlayablePlayerIds(this.state).entries()) {
+      this.state.playerClasses[playerId] =
+        playerClassDefinitions[index % playerClassDefinitions.length].id;
+      this.updateSessionSeat(playerId, {
+        classId: this.state.playerClasses[playerId],
+        ready: this.state.classSelection?.choices[playerId]?.confirmed ?? false
+      });
+    }
+    this.syncSoloPartnerClass("p1", 0);
+    runTelemetry.startRun(
+      this.state,
+      sessionMode === "solo-ai"
+        ? "local-ai"
+        : sessionMode === "online-lobby-preview"
+          ? "online-human"
+          : "local-human"
+    );
     this.notifyChange();
   }
 
@@ -329,8 +338,9 @@ export class GameRegistry {
 
     this.state.baseHitFlashMs = Math.max(0, this.state.baseHitFlashMs - deltaMs);
 
-    this.updatePlayerNotice("p1", deltaMs);
-    this.updatePlayerNotice("p2", deltaMs);
+    for (const playerId of getPlayablePlayerIds(this.state)) {
+      this.updatePlayerNotice(playerId, deltaMs);
+    }
   }
 
   getSelectedTowerId(playerId: PlayerId): string {
@@ -361,7 +371,7 @@ export class GameRegistry {
       occupied.add(gridKey(nextGrid));
     }
 
-    for (const playerId of ["p1", "p2"] as const) {
+    for (const playerId of getPlayablePlayerIds(this.state)) {
       const cursor = this.state.cursors[playerId];
       const clampedGrid = clampGrid(cursor.grid, nextMap);
 
@@ -376,8 +386,7 @@ export class GameRegistry {
     if (previousMapId !== nextMap.id && movedTowers > 0) {
       const detail = `${movedTowers} torre(s) reposicionada(s) fora da nova rota`;
 
-      this.pushPlayerNotice("p1", "MAPA EXPANDIU", detail, "warning", 2600);
-      this.pushPlayerNotice("p2", "MAPA EXPANDIU", detail, "warning", 2600);
+      this.pushNoticeToAll("MAPA EXPANDIU", detail, "warning", 2600);
     }
 
     if (previousMapId !== nextMap.id) {
@@ -642,17 +651,20 @@ export class GameRegistry {
 
   setPlayerReady(playerId: PlayerId): boolean {
     const state = this.state;
+    const activePlayerIds = getPlayablePlayerIds(state);
 
     if (
       state.phase !== "playing" ||
       state.wave.active ||
       state.wave.completed ||
+      !activePlayerIds.includes(playerId) ||
       state.wave.readyPlayers[playerId]
     ) {
       return false;
     }
 
     state.wave.readyPlayers[playerId] = true;
+    this.updateSessionSeat(playerId, { ready: true });
     this.pushPresentationEvent("audio", 500, { cueId: "ui_confirm" });
     this.pushPlayerNotice(playerId, "PRONTO", "timer acelerado", "success", 1600);
     this.pushMessage(`${playerId.toUpperCase()} pronto para a wave`, 1500);
@@ -669,17 +681,20 @@ export class GameRegistry {
     if (this.arePlayersReadyForWave()) {
       state.wave.nextWaveInMs = Math.min(state.wave.nextWaveInMs, WAVE_READY_COUNTDOWN_MS);
       state.wave.notice = {
-        title: "Ambos prontos",
+        title: "Time pronto",
         subtitle: `A wave entra em ${(WAVE_READY_COUNTDOWN_MS / 1000).toFixed(1)}s`,
         timerMs: WAVE_READY_COUNTDOWN_MS + 500,
         tone: "start"
       };
     } else {
-      const missingPlayer = playerId === "p1" ? "P2" : "P1";
+      const missingPlayers = activePlayerIds
+        .filter((candidate) => !state.wave.readyPlayers[candidate])
+        .map(getPlayerLabel)
+        .join(", ");
 
       state.wave.notice = {
-        title: `${playerId.toUpperCase()} pronto`,
-        subtitle: `${missingPlayer} pode acelerar. Sem pronto, a wave entra pelo timer.`,
+        title: `${getPlayerLabel(playerId)} pronto`,
+        subtitle: `${missingPlayers || "timer"} pode acelerar. Sem pronto, a wave entra pelo timer.`,
         timerMs: 2600,
         tone: "start"
       };
@@ -698,12 +713,12 @@ export class GameRegistry {
     }
 
     if (!state.wave.active) {
-      state.wave.readyPlayers.p1 = true;
-      state.wave.readyPlayers.p2 = true;
+      for (const playerId of getPlayablePlayerIds(state)) {
+        state.wave.readyPlayers[playerId] = true;
+      }
       state.wave.nextWaveInMs = 0;
       this.pushMessage("DEBUG wave imediata", 1200);
-      this.pushPlayerNotice("p1", "DEBUG", "wave imediata", "info", 1000);
-      this.pushPlayerNotice("p2", "DEBUG", "wave imediata", "info", 1000);
+      this.pushNoticeToAll("DEBUG", "wave imediata", "info", 1000);
       this.notifyChange();
 
       return true;
@@ -716,23 +731,37 @@ export class GameRegistry {
 
     this.clearWaveReadiness(true);
     this.pushMessage("DEBUG wave pulada", 1200);
-    this.pushPlayerNotice("p1", "DEBUG", "proxima wave armada", "info", 1000);
-    this.pushPlayerNotice("p2", "DEBUG", "proxima wave armada", "info", 1000);
+    this.pushNoticeToAll("DEBUG", "proxima wave armada", "info", 1000);
     this.notifyChange();
 
     return true;
   }
 
   clearWaveReadiness(armAutoStart = false): void {
-    this.state.wave.readyPlayers = {
-      p1: false,
-      p2: false
-    };
+    this.state.wave.readyPlayers = createPlayerRecord(getPlayablePlayerIds(this.state), () => false);
+    for (const playerId of getPlayablePlayerIds(this.state)) {
+      this.updateSessionSeat(playerId, { ready: false });
+    }
     this.state.wave.nextWaveInMs = armAutoStart ? WAVE_AUTO_START_MS : 0;
   }
 
+  updateSessionSeat(
+    playerId: PlayerId,
+    partial: Partial<Pick<MultiplayerSessionConfig["seats"][number], "classId" | "ready" | "connected">>
+  ): void {
+    const seat = this.state.session.seats.find((candidate) => candidate.id === playerId);
+
+    if (!seat) {
+      return;
+    }
+
+    Object.assign(seat, partial);
+  }
+
   arePlayersReadyForWave(): boolean {
-    return this.state.wave.readyPlayers.p1 && this.state.wave.readyPlayers.p2;
+    const playerIds = getPlayablePlayerIds(this.state);
+
+    return playerIds.length > 0 && playerIds.every((playerId) => this.state.wave.readyPlayers[playerId]);
   }
 
   getTowerUnderCursor(playerId: PlayerId) {
@@ -742,21 +771,16 @@ export class GameRegistry {
   }
 
   private createRunSummary(result: RunResult) {
-    const towerCounts = {
-      p1: this.countTowersForPlayer("p1"),
-      p2: this.countTowersForPlayer("p2")
-    };
-    const cloneStats = {
-      p1: { ...this.state.combatStats.p1 },
-      p2: { ...this.state.combatStats.p2 }
-    };
+    const playerIds = getPlayablePlayerIds(this.state);
+    const towerCounts = createPlayerRecord(playerIds, (playerId) => this.countTowersForPlayer(playerId));
+    const cloneStats = createPlayerRecord(playerIds, (playerId) => ({ ...this.state.combatStats[playerId] }));
 
     return {
       result,
       elapsedMs: this.state.elapsedMs,
       wavesCleared: Math.max(0, this.state.wave.currentWaveIndex),
       baseHpRemaining: this.state.baseHp,
-      playerClasses: { ...this.state.playerClasses },
+      playerClasses: createPlayerRecord(playerIds, (playerId) => this.state.playerClasses[playerId]),
       combatStats: cloneStats,
       towerCounts
     };
@@ -788,6 +812,38 @@ export class GameRegistry {
     if (notice.timerMs <= 0) {
       this.state.playerNotices[playerId] = null;
     }
+  }
+
+  private pushNoticeToAll(
+    title: string,
+    detail: string,
+    tone: PlayerNoticeTone = "info",
+    ttlMs = 1800
+  ): void {
+    for (const playerId of getPlayablePlayerIds(this.state)) {
+      this.pushPlayerNotice(playerId, title, detail, tone, ttlMs);
+    }
+  }
+
+  private syncSoloPartnerClass(playerId: PlayerId, selectedClassIndex: number): void {
+    const state = this.state;
+
+    if (state.sessionMode !== "solo-ai" || playerId !== "p1" || !state.classSelection) {
+      return;
+    }
+
+    const partnerId = "p2" as PlayerId;
+    const partnerChoice = state.classSelection.choices[partnerId];
+
+    if (!partnerChoice) {
+      return;
+    }
+
+    const partnerIndex = this.getComplementaryClassIndex(selectedClassIndex);
+    partnerChoice.selectedClassIndex = partnerIndex;
+    partnerChoice.confirmed = true;
+    state.playerClasses[partnerId] = playerClassDefinitions[partnerIndex].id;
+    this.updateSessionSeat(partnerId, { classId: state.playerClasses[partnerId], ready: true });
   }
 
   private getComplementaryClassIndex(selectedClassIndex: number): number {

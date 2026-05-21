@@ -177,10 +177,12 @@ export class EnemyRenderer {
 
   private drawAccumulatedDamage(enemy: EnemyEntity, alpha: number): void {
     const definition = getEnemyDefinition(enemy.typeId);
-    const topDamage = (["p1", "p2"] as const)
-      .map((playerId) => ({
+    const topDamage = (Object.entries(enemy.recentDamageByPlayer) as Array<
+      [PlayerId, (typeof enemy.recentDamageByPlayer)[PlayerId]]
+    >)
+      .map(([playerId, accumulator]) => ({
         playerId,
-        ...enemy.recentDamageByPlayer[playerId]
+        ...accumulator
       }))
       .filter((entry) => entry.timerMs > 0 && entry.total > 0 && enemy.alive)
       .sort((a, b) => b.total - a.total)
@@ -219,7 +221,7 @@ export class EnemyRenderer {
       }
     });
 
-    for (const playerId of ["p1", "p2"] as const) {
+    for (const playerId of Object.keys(enemy.recentDamageByPlayer) as PlayerId[]) {
       const key = this.getDamageLabelKey(enemy.id, playerId);
 
       if (!visibleKeys.has(key)) {

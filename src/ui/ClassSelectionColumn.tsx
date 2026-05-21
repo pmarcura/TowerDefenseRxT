@@ -2,11 +2,12 @@ import type { CSSProperties } from "react";
 import { gameUiBridge } from "../game/bridge/RewardBridge";
 import { playerClassDefinitions } from "../game/data/playerClasses";
 import type { PlayerId } from "../game/models/types";
+import { getPlayerLabel } from "../game/utils/players";
 
-const playerCopy: Record<
+const playerCopy: Partial<Record<
   PlayerId,
   { label: string; accentClass: string; keys: string; confirm: string }
-> = {
+>> = {
   p1: {
     label: "P1",
     accentClass: "p1",
@@ -24,7 +25,12 @@ const playerCopy: Record<
 export const ClassSelectionColumn = ({ playerId }: { playerId: PlayerId }) => {
   const state = gameUiBridge.getState();
   const selection = state.classSelection?.choices[playerId];
-  const copy = playerCopy[playerId];
+  const copy = playerCopy[playerId] ?? {
+    label: getPlayerLabel(playerId),
+    accentClass: "p1",
+    keys: "Online",
+    confirm: "Auto"
+  };
 
   if (!selection) {
     return null;

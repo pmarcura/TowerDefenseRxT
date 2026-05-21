@@ -28,7 +28,7 @@ const menuOptions: readonly MenuOption[] = [
     label: "Lobby Online",
     detail: "estrutura preparada para 2-12 jogadores",
     mode: "online-lobby-preview",
-    enabled: false
+    enabled: true
   }
 ];
 

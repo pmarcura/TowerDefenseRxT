@@ -1,12 +1,11 @@
 import { gameUiBridge } from "../game/bridge/RewardBridge";
 import { getPlayerClassDefinition } from "../game/data/playerClasses";
-import type { PlayerId, RunStats } from "../game/models/types";
+import type { RunStats } from "../game/models/types";
+import { getPlayerLabel } from "../game/utils/players";
 
 type RunSummaryOverlayProps = {
   summary: RunStats;
 };
-
-const playerIds: PlayerId[] = ["p1", "p2"];
 
 export const RunSummaryOverlay = ({ summary }: RunSummaryOverlayProps) => (
   <div className="overlay-shell summary-shell" role="dialog" aria-modal="true" aria-label="Resumo da run">
@@ -22,7 +21,7 @@ export const RunSummaryOverlay = ({ summary }: RunSummaryOverlayProps) => (
       </header>
 
       <div className="summary-columns">
-        {playerIds.map((playerId) => {
+        {(Object.keys(summary.playerClasses) as Array<keyof typeof summary.playerClasses>).map((playerId) => {
           const playerClass = getPlayerClassDefinition(summary.playerClasses[playerId]);
           const stats = summary.combatStats[playerId];
           const towerCount = Object.values(summary.towerCounts[playerId]).reduce(
@@ -32,7 +31,7 @@ export const RunSummaryOverlay = ({ summary }: RunSummaryOverlayProps) => (
 
           return (
             <section key={playerId} className={`summary-player summary-${playerId}`}>
-              <h2>{playerId.toUpperCase()} {playerClass.shortName}</h2>
+              <h2>{getPlayerLabel(playerId)} {playerClass.shortName}</h2>
               <dl>
                 <dt>Dano total</dt>
                 <dd>{Math.round(stats.totalDamageDealt)}</dd>

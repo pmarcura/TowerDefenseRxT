@@ -6,6 +6,7 @@ import {
 } from "../data/skills";
 import { GameRegistry } from "../GameRegistry";
 import type { PlayerId } from "../models/types";
+import { createPlayerRecord, getPlayablePlayerIds } from "../utils/players";
 import type { GameSystem } from "./GameSystem";
 
 const REWARD_CHOICE_COUNT = 3;
@@ -15,38 +16,36 @@ export class SkillTreeSystem implements GameSystem {
   constructor(private readonly registry: GameRegistry) {}
 
   update(deltaMs: number): void {
-    this.syncEconomyEffects("p1");
-    this.syncEconomyEffects("p2");
+    for (const playerId of getPlayablePlayerIds(this.registry.state)) {
+      this.syncEconomyEffects(playerId);
+    }
     this.updateRewardAutoSelect(deltaMs);
   }
 
   createRewardChoices(bossWaveId: string): void {
     const state = this.registry.state;
     const returnPhase = state.wave.completed ? "victory" : "playing";
-    const p1SkillIds = this.getChoicesForPlayer("p1", bossWaveId);
-    const p2SkillIds = this.getChoicesForPlayer("p2", bossWaveId);
+    const playerIds = getPlayablePlayerIds(state);
 
     state.rewardSelection = {
       bossWaveId,
       returnPhase,
       autoSelectInMs: REWARD_AUTO_SELECT_MS,
-      choices: {
-        p1: {
-          playerId: "p1",
-          skillIds: p1SkillIds,
-          selectedSkillId: p1SkillIds.length > 0 ? null : "none"
-        },
-        p2: {
-          playerId: "p2",
-          skillIds: p2SkillIds,
-          selectedSkillId: p2SkillIds.length > 0 ? null : "none"
-        }
-      }
+      choices: createPlayerRecord(playerIds, (playerId) => {
+        const skillIds = this.getChoicesForPlayer(playerId, bossWaveId);
+
+        return {
+          playerId,
+          skillIds,
+          selectedSkillId: skillIds.length > 0 ? null : "none"
+        };
+      })
     };
     state.phase = "reward-selection";
     this.registry.pushMessage("Escolha recompensas");
-    this.registry.pushPlayerNotice("p1", "RECOMPENSA", "escolha ou auto em 14s", "info", 2200);
-    this.registry.pushPlayerNotice("p2", "RECOMPENSA", "escolha ou auto em 14s", "info", 2200);
+    for (const playerId of playerIds) {
+      this.registry.pushPlayerNotice(playerId, "RECOMPENSA", "escolha ou auto em 14s", "info", 2200);
+    }
   }
 
   selectReward(playerId: PlayerId, skillId: string): boolean {
@@ -59,7 +58,7 @@ export class SkillTreeSystem implements GameSystem {
 
     const playerChoices = rewardSelection.choices[playerId];
 
-    if (playerChoices.selectedSkillId || !playerChoices.skillIds.includes(skillId)) {
+    if (!playerChoices || playerChoices.selectedSkillId || !playerChoices.skillIds.includes(skillId)) {
       return false;
     }
 
@@ -99,8 +98,8 @@ export class SkillTreeSystem implements GameSystem {
       return false;
     }
 
-    return Boolean(
-      rewardSelection.choices.p1.selectedSkillId && rewardSelection.choices.p2.selectedSkillId
+    return getPlayablePlayerIds(this.registry.state).every(
+      (playerId) => rewardSelection.choices[playerId]?.selectedSkillId
     );
   }
 
@@ -163,10 +162,10 @@ export class SkillTreeSystem implements GameSystem {
       return;
     }
 
-    for (const playerId of ["p1", "p2"] as const) {
+    for (const playerId of getPlayablePlayerIds(state)) {
       const choices = rewardSelection.choices[playerId];
 
-      if (!choices.selectedSkillId && choices.skillIds[0]) {
+      if (!choices?.selectedSkillId && choices?.skillIds[0]) {
         this.selectReward(playerId, choices.skillIds[0]);
       }
     }

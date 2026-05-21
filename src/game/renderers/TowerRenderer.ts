@@ -12,6 +12,7 @@ import type { GameState, PlayerClassDefinition, PlayerId, TowerEntity } from "..
 import type { BuildSystem } from "../systems/BuildSystem";
 import type { TowerSystem } from "../systems/TowerSystem";
 import { gridToWorld } from "../utils/grid";
+import { getLocalPlayerIds } from "../utils/players";
 
 export class TowerRenderer {
   private readonly graphics: Phaser.GameObjects.Graphics;
@@ -45,9 +46,8 @@ export class TowerRenderer {
     }
 
     this.syncLevelLabels(state, focusedTowerIds);
-    this.drawCursor(state, "p1");
-    if (state.sessionMode !== "solo-ai") {
-      this.drawCursor(state, "p2");
+    for (const playerId of getLocalPlayerIds(state.session)) {
+      this.drawCursor(state, playerId);
     }
     this.syncOwnerLabels(state);
   }
@@ -343,7 +343,7 @@ export class TowerRenderer {
     }
 
     for (const tower of state.towers) {
-      const shouldShow = tower.ownerId === "p2" || state.sessionMode !== "solo-ai";
+      const shouldShow = state.sessionMode !== "solo-ai" || tower.ownerId !== "p1";
       let label = this.ownerLabels.get(tower.id);
 
       if (!label) {

@@ -4,6 +4,7 @@ import { getWaveDefinition } from "../data/waves";
 import { GameRegistry } from "../GameRegistry";
 import type { WaveDefinition } from "../models/types";
 import { RunTelemetry } from "../telemetry/RunTelemetry";
+import { getPlayablePlayerIds } from "../utils/players";
 import type { EconomySystem } from "./EconomySystem";
 import type { EnemySystem } from "./EnemySystem";
 import type { GameSystem } from "./GameSystem";
@@ -57,8 +58,9 @@ export class WaveSystem implements GameSystem {
     const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
     this.registry.applyActiveMap(getMapStage(wave.mapStageIndex));
-    state.combatStats.p1.waveDamageDealt = 0;
-    state.combatStats.p2.waveDamageDealt = 0;
+    for (const playerId of getPlayablePlayerIds(state)) {
+      state.combatStats[playerId].waveDamageDealt = 0;
+    }
     this.activeGroups = this.createRuntimeGroups(wave);
     state.wave.active = true;
     state.wave.nextWaveInMs = 0;
@@ -73,8 +75,9 @@ export class WaveSystem implements GameSystem {
       cueId: wave.isBoss ? "boss" : "wave_start",
       label: wave.name
     });
-    this.registry.pushPlayerNotice("p1", "WAVE LIVE", wave.name, wave.isBoss ? "danger" : "info", 1600);
-    this.registry.pushPlayerNotice("p2", "WAVE LIVE", wave.name, wave.isBoss ? "danger" : "info", 1600);
+    for (const playerId of getPlayablePlayerIds(state)) {
+      this.registry.pushPlayerNotice(playerId, "WAVE LIVE", wave.name, wave.isBoss ? "danger" : "info", 1600);
+    }
     this.registry.pushMessage(`${wave.name} - ${state.activeMap.name}`, 2200);
     this.telemetry.record("wave-start", state);
     this.updateWaveSnapshot();
@@ -149,20 +152,15 @@ export class WaveSystem implements GameSystem {
       "complete",
       5200
     );
-    this.registry.pushPlayerNotice(
-      "p1",
-      `+${creditsGranted} CRED`,
-      `Dano wave ${Math.round(state.combatStats.p1.waveDamageDealt)}`,
-      "success",
-      2200
-    );
-    this.registry.pushPlayerNotice(
-      "p2",
-      `+${creditsGranted} CRED`,
-      `Dano wave ${Math.round(state.combatStats.p2.waveDamageDealt)}`,
-      "success",
-      2200
-    );
+    for (const playerId of getPlayablePlayerIds(state)) {
+      this.registry.pushPlayerNotice(
+        playerId,
+        `+${creditsGranted} CRED`,
+        `Dano wave ${Math.round(state.combatStats[playerId].waveDamageDealt)}`,
+        "success",
+        2200
+      );
+    }
     this.registry.pushMessage("Onda contida", 1800);
     this.telemetry.record("wave-clear", state);
   }
@@ -218,8 +216,9 @@ export class WaveSystem implements GameSystem {
 
     const detail = `rota ${newRoutes.map((route) => route + 1).join(", ")} marcada no mapa`;
 
-    this.registry.pushPlayerNotice("p1", "NOVA ROTA", detail, "warning", 3600);
-    this.registry.pushPlayerNotice("p2", "NOVA ROTA", detail, "warning", 3600);
+    for (const playerId of getPlayablePlayerIds(this.registry.state)) {
+      this.registry.pushPlayerNotice(playerId, "NOVA ROTA", detail, "warning", 3600);
+    }
   }
 
   private setRoundNotice(

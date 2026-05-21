@@ -1,11 +1,9 @@
 import { getMapStage } from "../../game/data/map";
 import { getTowerDefinition } from "../../game/data/towers";
 import { getWaveDefinition } from "../../game/data/waves";
-import type { PlayerId } from "../../game/models/types";
 import { gridKey, isInsideGrid } from "../../game/utils/grid";
+import type { PlayerId } from "../../game/models/types";
 import type { HeadlessGameState } from "./types";
-
-const playerIds: readonly PlayerId[] = ["p1", "p2"];
 
 export const checkHeadlessInvariants = (state: HeadlessGameState): string[] => {
   const failures: string[] = [];
@@ -20,7 +18,7 @@ export const checkHeadlessInvariants = (state: HeadlessGameState): string[] => {
     failures.push(`currentWaveIndex invalido: ${state.currentWaveIndex}`);
   }
 
-  for (const playerId of playerIds) {
+  for (const playerId of Object.keys(state.players) as PlayerId[]) {
     const player = state.players[playerId];
 
     if (!player) {

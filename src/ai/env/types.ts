@@ -84,6 +84,7 @@ export type HeadlessResetOptions = {
   seed?: number;
   mapId?: string;
   debug?: boolean;
+  playerCount?: number;
   players?: Partial<Record<PlayerId, string>>;
   targetWaveCount?: number;
 };
