@@ -27,7 +27,7 @@ export const RewardColumn = ({ playerId }: { playerId: PlayerId }) => {
             {getPlayerLabel(playerId)} {playerClass.shortName}
           </h2>
           <p>
-            Sigilos {skillTree.bossSigils} · Atalho {playerKeyLabels[playerId] ?? "Auto"}
+            Sigilos {skillTree.bossSigils} · Atalho {playerKeyLabels[playerId] ?? "Z"}
           </p>
         </div>
         <span className={isDone ? "reward-status reward-status-done" : "reward-status"}>
@@ -45,7 +45,7 @@ export const RewardColumn = ({ playerId }: { playerId: PlayerId }) => {
               rank={getSkillRank(skillTree.skillRanks, skillId)}
               selected={selectedSkillId === skillId}
               disabled={isDone}
-              hotkey={index === 0 ? playerKeyLabels[playerId] ?? null : null}
+              hotkey={index === 0 ? playerKeyLabels[playerId] ?? "Z" : null}
             />
           ))
         ) : (

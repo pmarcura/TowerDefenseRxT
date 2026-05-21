@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "../config/constants";
 import { GameRegistry } from "../GameRegistry";
 import type { GameSessionMode } from "../models/types";
+import type { MultiplayerSessionConfig } from "../network/sessionTypes";
 import { AmbientParticleRenderer } from "../renderers/AmbientParticleRenderer";
 
 type MenuOption = {
@@ -42,6 +43,15 @@ export class MainMenuScene extends Phaser.Scene {
   private readonly optionTexts: Phaser.GameObjects.Text[] = [];
   private readonly optionDetailTexts: Phaser.GameObjects.Text[] = [];
   private selectedIndex = 0;
+  private readonly handleStartOnlineRun = (event: Event) => {
+    const session = (event as CustomEvent<MultiplayerSessionConfig>).detail;
+
+    if (!session) {
+      return;
+    }
+
+    this.scene.start("GameScene", { sessionMode: session.mode, session });
+  };
 
   constructor() {
     super("MainMenuScene");
@@ -56,6 +66,10 @@ export class MainMenuScene extends Phaser.Scene {
     this.createTexts();
     this.createStartInput();
     this.input.on("pointerdown", this.handlePointerDown, this);
+    window.addEventListener("aegis:start-online-run", this.handleStartOnlineRun);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener("aegis:start-online-run", this.handleStartOnlineRun);
+    });
   }
 
   update(_time: number, delta: number): void {
@@ -254,6 +268,11 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     GameRegistry.getInstance().setNextSessionMode(option.mode);
+    if (option.mode === "online-lobby-preview") {
+      window.dispatchEvent(new CustomEvent("aegis:open-online-lobby"));
+      return;
+    }
+
     this.scene.start("GameScene", { sessionMode: option.mode });
   }
 

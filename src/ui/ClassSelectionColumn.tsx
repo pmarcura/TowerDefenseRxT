@@ -28,8 +28,8 @@ export const ClassSelectionColumn = ({ playerId }: { playerId: PlayerId }) => {
   const copy = playerCopy[playerId] ?? {
     label: getPlayerLabel(playerId),
     accentClass: "p1",
-    keys: "Online",
-    confirm: "Auto"
+    keys: "A/D ou Q/E",
+    confirm: "Space"
   };
 
   if (!selection) {

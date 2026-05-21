@@ -245,20 +245,20 @@ const TowerQuickMenu = ({
 };
 
 const getTowerKeyLabel = (playerId: PlayerId, index: number): string => {
-  if (playerId === "p1") {
-    return index < 9 ? `${index + 1}` : "Q/E";
+  if (playerId === "p2") {
+    return index === 0 ? "Pg" : "Pg";
   }
 
-  return index === 0 ? "Pg" : "Pg";
+  return index < 9 ? `${index + 1}` : "Q/E";
 };
 
 const getControlLabels = (playerId: PlayerId) =>
   playerControls[playerId] ?? {
-    move: "ONLINE",
-    cycle: "ONLINE",
-    build: "ONLINE",
-    inspect: "ONLINE",
-    ready: "ONLINE"
+    move: "WASD",
+    cycle: "Q/E ou 1-9",
+    build: "SPACE",
+    inspect: "F",
+    ready: "R"
   };
 
 const Metric = ({ label, value }: { label: string; value: number }) => (

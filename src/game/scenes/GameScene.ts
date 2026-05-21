@@ -25,6 +25,7 @@ import { StatusEffectSystem } from "../systems/StatusEffectSystem";
 import { TowerSystem } from "../systems/TowerSystem";
 import { WaveSystem } from "../systems/WaveSystem";
 import type { GameSessionMode } from "../models/types";
+import type { MultiplayerSessionConfig } from "../network/sessionTypes";
 
 export class GameScene extends Phaser.Scene {
   private readonly gameRegistry = GameRegistry.getInstance();
@@ -49,7 +50,12 @@ export class GameScene extends Phaser.Scene {
     super("GameScene");
   }
 
-  init(data?: { sessionMode?: GameSessionMode }): void {
+  init(data?: { sessionMode?: GameSessionMode; session?: MultiplayerSessionConfig }): void {
+    if (data?.session) {
+      this.gameRegistry.setNextSessionConfig(data.session);
+      return;
+    }
+
     if (data?.sessionMode) {
       this.gameRegistry.setNextSessionMode(data.sessionMode);
     }
@@ -114,6 +120,7 @@ export class GameScene extends Phaser.Scene {
     );
     const buildSystem = new BuildSystem(this.gameRegistry, economySystem, skillTreeSystem);
     this.aiPartnerSystem = new AiPartnerSystem(this.gameRegistry, buildSystem, skillTreeSystem);
+    gameUiBridge.bindBuildSystem(buildSystem);
     const waveSystem = new WaveSystem(
       this.gameRegistry,
       enemySystem,

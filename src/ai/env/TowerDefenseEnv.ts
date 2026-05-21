@@ -7,7 +7,7 @@ import {
   WAVE_COMPLETION_BONUS_PER_PLAYER
 } from "../../game/config/constants";
 import { getEnemyDefinition } from "../../game/data/enemies";
-import { getMapStage, mapDefinition } from "../../game/data/map";
+import { getMapStage } from "../../game/data/map";
 import {
   getPlayerClassDefinition,
   playerClassDefinitions
@@ -96,7 +96,7 @@ export class TowerDefenseEnv {
       options.debug ?? false,
       options.targetWaveCount ?? DEFAULT_TARGET_WAVE_COUNT
     );
-    this.stateInternal.mapId = options.mapId ?? mapDefinition.id;
+    this.stateInternal.mapId = options.mapId ?? this.stateInternal.mapId;
 
     return this.state;
   }
@@ -547,7 +547,9 @@ export class TowerDefenseEnv {
       message: `${wave.name} iniciou`
     });
 
-    const result = this.resolveWave(wave, getMapStage(wave.mapStageIndex));
+    const map = getCurrentMap(this.stateInternal);
+    const scaledGroups = getScaledWaveGroups(wave, this.stateInternal, map);
+    const result = this.resolveWave(wave, map);
     this.stateInternal.baseHp = Math.max(0, this.stateInternal.baseHp - result.baseDamage);
     this.stateInternal.waveLog.push({
       waveId: wave.id,
@@ -556,7 +558,7 @@ export class TowerDefenseEnv {
       baseDamage: result.baseDamage,
       leaks: result.leaks,
       kills: result.kills,
-      routeCount: new Set(wave.groups.map((group) => group.pathIndex ?? 0)).size
+      routeCount: new Set(scaledGroups.map((group) => group.pathIndex ?? 0)).size
     });
 
     if (!result.cleared || this.stateInternal.baseHp <= 0) {
@@ -605,7 +607,9 @@ export class TowerDefenseEnv {
     let kills = 0;
     let leaks = 0;
 
-    for (const group of [...wave.groups].sort((a, b) => a.startDelayMs - b.startDelayMs)) {
+    for (const group of getScaledWaveGroups(wave, this.stateInternal, map).sort(
+      (a, b) => a.startDelayMs - b.startDelayMs
+    )) {
       const enemy = getEnemyDefinition(group.enemyTypeId);
       const groupResult = this.resolveGroup(group, enemy, map);
 
@@ -1026,11 +1030,12 @@ const createInitialState = (
 ): HeadlessGameState => {
   const playerCount = resolveHeadlessPlayerCount(requestedPlayers, requestedPlayerCount);
   const playerIds = Array.from({ length: playerCount }, (_, index) => createPlayerId(index + 1));
+  const openingMap = getMapStage(getMapStageBoostForPlayerCount(playerCount));
 
   return {
     version: ENV_VERSION,
     seed,
-    mapId: mapDefinition.id,
+    mapId: openingMap.id,
     phase: "preparation",
     previousPhase: null,
     debug,
@@ -1038,14 +1043,15 @@ const createInitialState = (
     elapsedMs: 0,
     currentWaveIndex: 0,
     targetWaveCount: Math.max(1, Math.floor(targetWaveCount)),
-    baseHp: mapDefinition.baseHp,
+    baseHp: openingMap.baseHp,
     readyCountdownMs: WAVE_AUTO_START_MS,
     players: Object.fromEntries(
       playerIds.map((playerId, index) => [
         playerId,
         createPlayer(
           playerId,
-          requestedPlayers[playerId] ?? playerClassDefinitions[index % playerClassDefinitions.length].id
+          requestedPlayers[playerId] ?? playerClassDefinitions[index % playerClassDefinitions.length].id,
+          openingMap.startingCredits
         )
       ])
     ) as Record<PlayerId, HeadlessPlayerState>,
@@ -1055,10 +1061,10 @@ const createInitialState = (
   };
 };
 
-const createPlayer = (id: PlayerId, classId: string): HeadlessPlayerState => ({
+const createPlayer = (id: PlayerId, classId: string, credits: number): HeadlessPlayerState => ({
   id,
   classId,
-  credits: mapDefinition.startingCredits,
+  credits,
   sigils: 0,
   ready: false,
   skillRanks: {},
@@ -1099,7 +1105,61 @@ const createRewardChoice = (
 const getCurrentMap = (state: HeadlessGameState): MapDefinition => {
   const wave = getWaveDefinition(state.currentWaveIndex);
 
-  return getMapStage(wave.mapStageIndex);
+  return getMapStage(wave.mapStageIndex + getMapStageBoostForPlayerCount(Object.keys(state.players).length));
+};
+
+const getScaledWaveGroups = (
+  wave: WaveDefinition,
+  state: HeadlessGameState,
+  map: MapDefinition
+): WaveGroupDefinition[] => {
+  const playerCount = Object.keys(state.players).length;
+  const pressureScale = 1 + Math.max(0, playerCount - 2) * 0.14;
+  const tempoScale = 1 + Math.max(0, playerCount - 2) * 0.025;
+  const routeCount = Math.max(1, map.paths.length);
+  const routeCopies = getRouteCopiesForPlayerCount(playerCount, routeCount);
+
+  return wave.groups.flatMap((group, groupIndex) => {
+    const totalCount = Math.max(1, Math.round(group.count * pressureScale));
+    const countPerRoute = Math.max(1, Math.ceil(totalCount / routeCopies));
+    const basePathIndex = group.pathIndex ?? groupIndex % routeCount;
+
+    return Array.from({ length: routeCopies }, (_, copyIndex) => ({
+      ...group,
+      count: countPerRoute,
+      intervalMs: Math.max(90, Math.round(group.intervalMs / tempoScale)),
+      startDelayMs: group.startDelayMs + copyIndex * 420,
+      pathIndex: (basePathIndex + copyIndex) % routeCount
+    }));
+  });
+};
+
+const getMapStageBoostForPlayerCount = (playerCount: number): number => {
+  if (playerCount >= 10) {
+    return 4;
+  }
+
+  if (playerCount >= 8) {
+    return 3;
+  }
+
+  if (playerCount >= 4) {
+    return 2;
+  }
+
+  return 0;
+};
+
+const getRouteCopiesForPlayerCount = (playerCount: number, routeCount: number): number => {
+  if (playerCount >= 8) {
+    return Math.min(routeCount, 3);
+  }
+
+  if (playerCount >= 4) {
+    return Math.min(routeCount, 2);
+  }
+
+  return 1;
 };
 
 const getKnownTower = (towerId: string): TowerDefinition | null =>

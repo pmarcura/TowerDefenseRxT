@@ -11,6 +11,15 @@ npm install
 npm run dev
 ```
 
+Online local:
+
+```bash
+npm run server
+npm run dev
+```
+
+Abra `http://127.0.0.1:5173/`, escolha **Lobby Online**, crie uma sala e compartilhe o código. Em desenvolvimento, outros navegadores na mesma máquina entram pelo mesmo endereço; em rede real, configure `VITE_MULTIPLAYER_URL` para o host WebSocket publicado.
+
 ## Simulação E QA
 
 ```bash

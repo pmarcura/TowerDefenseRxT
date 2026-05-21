@@ -3,7 +3,6 @@ import type { MultiplayerSessionConfig, PlayerSeat } from "../network/sessionTyp
 
 export const MIN_PLAYER_COUNT = 2;
 export const MAX_PLAYER_COUNT = 12;
-export const LOCAL_CONTROLLED_PLAYER_IDS = ["p1", "p2"] as const satisfies readonly PlayerId[];
 
 const PLAYER_ID_PATTERN = /^p([1-9]|1[0-2])$/;
 
@@ -32,8 +31,7 @@ export const getSessionPlayerIds = (session: MultiplayerSessionConfig): PlayerId
 export const getLocalPlayerIds = (session: MultiplayerSessionConfig): PlayerId[] =>
   session.seats
     .filter((seat) => isPlayableSeat(seat) && seat.kind === "human-local")
-    .map((seat) => seat.id)
-    .filter((playerId) => LOCAL_CONTROLLED_PLAYER_IDS.includes(playerId as "p1" | "p2"));
+    .map((seat) => seat.id);
 
 export const getPlayablePlayerIds = (state: GameState): PlayerId[] =>
   getSessionPlayerIds(state.session).filter((playerId) => Boolean(state.playerClasses[playerId]));

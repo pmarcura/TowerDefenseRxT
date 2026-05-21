@@ -6,13 +6,21 @@ import type {
   TowerAutoBuildId,
   TowerUpgradeBranchId
 } from "../models/types";
+import type { GameAction } from "../actions/types";
+import { onlineClient } from "../network/OnlineClient";
+import type { BuildSystem } from "../systems/BuildSystem";
 import type { ClassSelectionSystem } from "../systems/ClassSelectionSystem";
 import type { SkillTreeSystem } from "../systems/SkillTreeSystem";
 
 class GameUiBridge {
   private readonly registry = GameRegistry.getInstance();
+  private buildSystem: BuildSystem | null = null;
   private classSelectionSystem: ClassSelectionSystem | null = null;
   private skillTreeSystem: SkillTreeSystem | null = null;
+
+  bindBuildSystem(buildSystem: BuildSystem): void {
+    this.buildSystem = buildSystem;
+  }
 
   bindClassSelectionSystem(classSelectionSystem: ClassSelectionSystem): void {
     this.classSelectionSystem = classSelectionSystem;
@@ -47,7 +55,13 @@ class GameUiBridge {
   }
 
   setPlayerReady(playerId: PlayerId): boolean {
-    return this.registry.setPlayerReady(playerId);
+    const changed = this.registry.setPlayerReady(playerId);
+
+    if (changed) {
+      this.sendLocalGameAction({ type: "SET_READY", playerId, ready: true });
+    }
+
+    return changed;
   }
 
   openTowerInspection(playerId: PlayerId): boolean {
@@ -75,11 +89,23 @@ class GameUiBridge {
     towerId: string,
     branchId: TowerUpgradeBranchId
   ): boolean {
-    return this.registry.spendTowerUpgradePoint(playerId, towerId, branchId);
+    const changed = this.registry.spendTowerUpgradePoint(playerId, towerId, branchId);
+
+    if (changed) {
+      this.sendLocalGameAction({ type: "UPGRADE_TOWER", playerId, towerId, branchId });
+    }
+
+    return changed;
   }
 
   setTowerAutoBuild(playerId: PlayerId, towerId: string, buildId: TowerAutoBuildId): boolean {
-    return this.registry.setTowerAutoBuild(playerId, towerId, buildId);
+    const changed = this.registry.setTowerAutoBuild(playerId, towerId, buildId);
+
+    if (changed) {
+      this.sendLocalGameAction({ type: "SET_AUTO_BUILD", playerId, towerId, buildId });
+    }
+
+    return changed;
   }
 
   toggleTowerAutoUpgrade(playerId: PlayerId, towerId: string): boolean {
@@ -87,7 +113,13 @@ class GameUiBridge {
   }
 
   selectClass(playerId: PlayerId, classId: string): boolean {
-    return this.classSelectionSystem?.selectClass(playerId, classId) ?? false;
+    const changed = this.classSelectionSystem?.selectClass(playerId, classId) ?? false;
+
+    if (changed) {
+      this.sendLocalGameAction({ type: "SELECT_CLASS", playerId, classId });
+    }
+
+    return changed;
   }
 
   cycleClass(playerId: PlayerId, direction: number): boolean {
@@ -109,9 +141,59 @@ class GameUiBridge {
       this.skillTreeSystem.completeRewardSelection();
     }
 
+    if (selected) {
+      this.sendLocalGameAction({ type: "SELECT_REWARD", playerId, skillId });
+    }
+
     this.registry.notifyChange();
 
     return selected;
+  }
+
+  sendLocalGameAction(action: GameAction): void {
+    if (onlineClient.getState().localPlayerId !== ("playerId" in action ? action.playerId : null)) {
+      return;
+    }
+
+    onlineClient.sendGameAction(action);
+  }
+
+  applyRemoteGameAction(action: GameAction): boolean {
+    switch (action.type) {
+      case "BUILD_TOWER":
+        return this.buildSystem?.tryBuildForPlayerAt(action.playerId, action.towerId, action.grid) ?? false;
+      case "UPGRADE_TOWER":
+        return this.registry.spendTowerUpgradePoint(action.playerId, action.towerId, action.branchId);
+      case "SET_READY":
+        return action.ready ? this.registry.setPlayerReady(action.playerId) : false;
+      case "SELECT_CLASS":
+        return this.classSelectionSystem?.selectClass(action.playerId, action.classId) ?? false;
+      case "SELECT_REWARD": {
+        if (!this.skillTreeSystem) {
+          return false;
+        }
+
+        const selected = this.skillTreeSystem.selectReward(action.playerId, action.skillId);
+
+        if (selected && this.skillTreeSystem.canCloseRewardSelection()) {
+          this.skillTreeSystem.completeRewardSelection();
+        }
+
+        this.registry.notifyChange();
+
+        return selected;
+      }
+      case "SET_AUTO_BUILD":
+        return this.registry.setTowerAutoBuild(action.playerId, action.towerId, action.buildId);
+      case "PAUSE":
+        return action.paused ? this.registry.pause() : this.registry.resume();
+      case "DEBUG_ADVANCE_WAVE":
+        return this.registry.debugAdvanceWave();
+      case "WAIT":
+        return false;
+      default:
+        return false;
+    }
   }
 }
 

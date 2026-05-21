@@ -1,6 +1,8 @@
 import Phaser from "phaser";
+import { gameUiBridge } from "../bridge/RewardBridge";
 import { CURSOR_STEP_COOLDOWN_MS } from "../config/constants";
 import { playerClassDefinitions } from "../data/playerClasses";
+import { towerBranchDefinitions } from "../data/towerBranches";
 import { GameRegistry } from "../GameRegistry";
 import type { GridPoint, PlayerId } from "../models/types";
 import type { BuildSystem } from "../systems/BuildSystem";
@@ -132,30 +134,30 @@ export class KeyboardCoopController {
       return;
     }
 
-    const localPlayerIds = getLocalPlayerIds(this.registry.state.session);
-
-    if (localPlayerIds.includes("p1")) {
-      this.updatePlayer("p1", this.p1Keys);
-    }
-
-    if (localPlayerIds.includes("p2")) {
-      this.updatePlayer("p2", this.p2Keys);
+    for (const slot of this.getLocalControlSlots()) {
+      this.updatePlayer(slot.playerId, slot.keys);
     }
   }
 
   private updateRewardSelection(): void {
     let selected = false;
-    const localPlayerIds = getLocalPlayerIds(this.registry.state.session);
 
-    if (localPlayerIds.includes("p1") && Phaser.Input.Keyboard.JustDown(this.p1Keys.buySkill)) {
-      selected = this.skillTreeSystem.selectHighlightedReward("p1") || selected;
-    }
+    for (const slot of this.getLocalControlSlots()) {
+      if (Phaser.Input.Keyboard.JustDown(slot.keys.buySkill)) {
+        const highlightedSkillId =
+          this.registry.state.rewardSelection?.choices[slot.playerId]?.skillIds[0] ?? null;
+        const changed = this.skillTreeSystem.selectHighlightedReward(slot.playerId);
 
-    if (
-      localPlayerIds.includes("p2") &&
-      Phaser.Input.Keyboard.JustDown(this.p2Keys.buySkill)
-    ) {
-      selected = this.skillTreeSystem.selectHighlightedReward("p2") || selected;
+        if (changed && highlightedSkillId) {
+          gameUiBridge.sendLocalGameAction({
+            type: "SELECT_REWARD",
+            playerId: slot.playerId,
+            skillId: highlightedSkillId
+          });
+        }
+
+        selected = changed || selected;
+      }
     }
 
     if (selected && this.skillTreeSystem.canCloseRewardSelection()) {
@@ -183,14 +185,8 @@ export class KeyboardCoopController {
   }
 
   private updateClassSelection(): void {
-    const localPlayerIds = getLocalPlayerIds(this.registry.state.session);
-
-    if (localPlayerIds.includes("p1")) {
-      this.updatePlayerClassSelection("p1", this.p1Keys);
-    }
-
-    if (localPlayerIds.includes("p2")) {
-      this.updatePlayerClassSelection("p2", this.p2Keys);
+    for (const slot of this.getLocalControlSlots()) {
+      this.updatePlayerClassSelection(slot.playerId, slot.keys);
     }
   }
 
@@ -231,7 +227,7 @@ export class KeyboardCoopController {
       return;
     }
 
-    const keys = inspection.playerId === "p1" ? this.p1Keys : this.p2Keys;
+    const keys = this.getKeysForLocalPlayer(inspection.playerId) ?? this.p1Keys;
 
     if (Phaser.Input.Keyboard.JustDown(keys.inspectTower)) {
       this.registry.closeTowerInspection();
@@ -255,7 +251,16 @@ export class KeyboardCoopController {
     }
 
     if (Phaser.Input.Keyboard.JustDown(keys.build)) {
-      this.registry.activateTowerInspectionOption(inspection.playerId);
+      const branch = towerBranchDefinitions[inspection.selectedOptionIndex];
+
+      if (branch && this.registry.activateTowerInspectionOption(inspection.playerId)) {
+        gameUiBridge.sendLocalGameAction({
+          type: "UPGRADE_TOWER",
+          playerId: inspection.playerId,
+          towerId: inspection.towerId,
+          branchId: branch.id
+        });
+      }
     }
 
     if (Phaser.Input.Keyboard.JustDown(keys.readyWave)) {
@@ -283,7 +288,12 @@ export class KeyboardCoopController {
     }
 
     if (Phaser.Input.Keyboard.JustDown(keys.build)) {
-      this.buildSystem.tryBuildForPlayer(playerId);
+      const towerId = this.registry.getSelectedTowerId(playerId);
+      const grid = { ...state.cursors[playerId].grid };
+
+      if (this.buildSystem.tryBuildForPlayer(playerId)) {
+        gameUiBridge.sendLocalGameAction({ type: "BUILD_TOWER", playerId, towerId, grid });
+      }
     }
 
     if (Phaser.Input.Keyboard.JustDown(keys.inspectTower)) {
@@ -291,7 +301,9 @@ export class KeyboardCoopController {
     }
 
     if (!state.wave.active && Phaser.Input.Keyboard.JustDown(keys.readyWave)) {
-      this.registry.setPlayerReady(playerId);
+      if (this.registry.setPlayerReady(playerId)) {
+        gameUiBridge.sendLocalGameAction({ type: "SET_READY", playerId, ready: true });
+      }
     }
 
     if (Phaser.Input.Keyboard.JustDown(keys.previousTower)) {
@@ -316,28 +328,49 @@ export class KeyboardCoopController {
       return;
     }
 
+    const primaryPlayerId = getLocalPlayerIds(state.session)[0];
+
+    if (!primaryPlayerId) {
+      return;
+    }
+
     const grid = worldToGrid({ x: pointer.x, y: pointer.y }, state.activeMap);
 
     if (!isInsideGrid(grid, state.activeMap)) {
       return;
     }
 
-    state.cursors.p1.grid = grid;
+    state.cursors[primaryPlayerId].grid = grid;
 
     const tower = state.towers.find(
       (candidate) => candidate.grid.col === grid.col && candidate.grid.row === grid.row
     );
 
     if (tower) {
-      if (tower.ownerId === "p1") {
-        this.registry.openTowerInspection("p1");
+      if (tower.ownerId === primaryPlayerId) {
+        this.registry.openTowerInspection(primaryPlayerId);
       } else {
-        this.registry.pushPlayerNotice("p1", "TORRE DA IA", "espaco ocupado por P2", "info", 1300);
+        this.registry.pushPlayerNotice(
+          primaryPlayerId,
+          "TORRE DO TIME",
+          "espaco ocupado por outro jogador",
+          "info",
+          1300
+        );
       }
       return;
     }
 
-    this.buildSystem.tryBuildForPlayer("p1");
+    const towerId = this.registry.getSelectedTowerId(primaryPlayerId);
+
+    if (this.buildSystem.tryBuildForPlayer(primaryPlayerId)) {
+      gameUiBridge.sendLocalGameAction({
+        type: "BUILD_TOWER",
+        playerId: primaryPlayerId,
+        towerId,
+        grid
+      });
+    }
   }
 
   private getDirection(keys: PlayerKeys): GridPoint {
@@ -358,5 +391,24 @@ export class KeyboardCoopController {
     }
 
     return { col: 0, row: 0 };
+  }
+
+  private getLocalControlSlots(): { playerId: PlayerId; keys: PlayerKeys }[] {
+    const [primaryPlayerId, secondaryPlayerId] = getLocalPlayerIds(this.registry.state.session);
+    const slots: { playerId: PlayerId; keys: PlayerKeys }[] = [];
+
+    if (primaryPlayerId) {
+      slots.push({ playerId: primaryPlayerId, keys: this.p1Keys });
+    }
+
+    if (secondaryPlayerId) {
+      slots.push({ playerId: secondaryPlayerId, keys: this.p2Keys });
+    }
+
+    return slots;
+  }
+
+  private getKeysForLocalPlayer(playerId: PlayerId): PlayerKeys | null {
+    return this.getLocalControlSlots().find((slot) => slot.playerId === playerId)?.keys ?? null;
   }
 }

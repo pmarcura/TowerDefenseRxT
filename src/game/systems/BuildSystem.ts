@@ -188,6 +188,25 @@ export class BuildSystem implements GameSystem {
     return true;
   }
 
+  tryBuildForPlayerAt(playerId: PlayerId, towerId: string, grid: GridPoint): boolean {
+    const state = this.registry.state;
+
+    if (!getPlayablePlayerIds(state).includes(playerId)) {
+      return false;
+    }
+
+    const towerIndex = this.getAvailableTowers(playerId).findIndex((tower) => tower.id === towerId);
+
+    if (towerIndex < 0) {
+      return false;
+    }
+
+    state.cursors[playerId].grid = clampGrid(grid, state.activeMap);
+    state.cursors[playerId].selectedTowerIndex = towerIndex;
+
+    return this.tryBuildForPlayer(playerId);
+  }
+
   private getBuildBlockReason(grid: GridPoint): string | null {
     const state = this.registry.state;
     const map = state.activeMap;

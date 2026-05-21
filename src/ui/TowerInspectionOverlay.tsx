@@ -55,9 +55,9 @@ export const TowerInspectionOverlay = ({ state }: TowerInspectionOverlayProps) =
     .toString(16)
     .padStart(6, "0")}`;
   const controls =
-    inspection.playerId === "p1"
-      ? "WASD/Q/E navegam · SPACE aplica · R auto · F fecha"
-      : "Setas/PgUp/PgDn navegam · ENTER aplica · Backspace auto · Shift fecha";
+    inspection.playerId === "p2"
+      ? "Setas/PgUp/PgDn navegam · ENTER aplica · Backspace auto · Shift fecha"
+      : "WASD/Q/E navegam · SPACE aplica · R auto · F fecha";
   const upgradeStatus =
     selectedRank >= selectedBranch.maxRank
       ? "Linha completa"

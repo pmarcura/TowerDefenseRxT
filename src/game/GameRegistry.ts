@@ -3,8 +3,9 @@ import {
   WAVE_AUTO_START_MS,
   WAVE_READY_COUNTDOWN_MS
 } from "./config/constants";
-import { mapDefinition } from "./data/map";
+import { getMapStage } from "./data/map";
 import { playerClassDefinitions } from "./data/playerClasses";
+import { getWaveDefinition } from "./data/waves";
 import {
   applyTowerAutoBuild,
   getTowerAutoBuildDefinition,
@@ -80,10 +81,27 @@ const createInitialCursor = (selectedTowerIndex: number) => ({
   moveCooldownMs: 0
 });
 
+const getOpeningMapStageIndex = (playerCount: number): number => {
+  if (playerCount >= 10) {
+    return 4;
+  }
+
+  if (playerCount >= 7) {
+    return 3;
+  }
+
+  if (playerCount >= 4) {
+    return 2;
+  }
+
+  return 0;
+};
+
 const createInitialState = (
   session: MultiplayerSessionConfig = createDefaultMultiplayerSession()
 ): GameState => {
   const playerIds = getSessionPlayerIds(session);
+  const openingMap = getMapStage(getOpeningMapStageIndex(playerIds.length));
 
   return {
     phase: "menu",
@@ -99,9 +117,9 @@ const createInitialState = (
       lastDecision: null
     },
     presentationEvents: [],
-    activeMap: mapDefinition,
+    activeMap: openingMap,
     economies: createPlayerRecord(playerIds, () => ({
-      credits: mapDefinition.startingCredits,
+      credits: openingMap.startingCredits,
       rewardMultiplier: 1
     })),
     combatStats: createPlayerRecord(playerIds, () => ({
@@ -118,7 +136,7 @@ const createInitialState = (
     towerInspection: null,
     classSelection: null,
     playerNotices: createPlayerRecord(playerIds, () => null),
-    baseHp: mapDefinition.baseHp,
+    baseHp: openingMap.baseHp,
     baseHitFlashMs: 0,
     lastBaseDamage: 0,
     enemies: [],
@@ -180,6 +198,13 @@ export class GameRegistry {
     this.notifyChange();
   }
 
+  setNextSessionConfig(session: MultiplayerSessionConfig): void {
+    this.nextSession = session;
+    this.state.sessionMode = session.mode;
+    this.state.session = session;
+    this.notifyChange();
+  }
+
   getNextSessionMode(): GameSessionMode {
     return this.nextSession.mode;
   }
@@ -194,6 +219,12 @@ export class GameRegistry {
             this.nextSession.seed,
             sessionMode
           ));
+
+    if (this.shouldStartPreparedOnlineRun(this.nextSession)) {
+      this.startPreparedRun();
+      return;
+    }
+
     this.state = createInitialState(this.nextSession);
     this.state.phase = "class-selection";
     const localPlayerIds = getLocalPlayerIds(this.nextSession);
@@ -848,6 +879,49 @@ export class GameRegistry {
 
   private getComplementaryClassIndex(selectedClassIndex: number): number {
     return (selectedClassIndex + 1) % playerClassDefinitions.length;
+  }
+
+  private shouldStartPreparedOnlineRun(session: MultiplayerSessionConfig): boolean {
+    const activeSeats = session.seats.filter((seat) => seat.connected && seat.kind !== "empty" && seat.kind !== "spectator");
+
+    return (
+      session.mode === "online-lobby-preview" &&
+      activeSeats.length >= session.minPlayers &&
+      activeSeats.every((seat) => Boolean(seat.classId))
+    );
+  }
+
+  private startPreparedRun(): void {
+    this.state = createInitialState(this.nextSession);
+
+    const state = this.state;
+    const nextWave = getWaveDefinition(state.wave.currentWaveIndex);
+
+    for (const [index, playerId] of getPlayablePlayerIds(state).entries()) {
+      const seat = state.session.seats.find((candidate) => candidate.id === playerId);
+
+      state.playerClasses[playerId] =
+        seat?.classId ?? playerClassDefinitions[index % playerClassDefinitions.length].id;
+    }
+
+    state.classSelection = null;
+    state.phase = "playing";
+    state.wave.active = false;
+    state.wave.completed = false;
+    this.clearWaveReadiness(true);
+    state.wave.notice = {
+      title: "Lobby conectado",
+      subtitle: `${nextWave.name}: construam e deem pronto para iniciar`,
+      timerMs: 5200,
+      tone: "start"
+    };
+    this.pushMessage("Sala online iniciou a run", 1800);
+    this.pushPresentationEvent("wave", 1200, {
+      cueId: "wave_start",
+      label: "Run online"
+    });
+    runTelemetry.startRun(state, "online-human");
+    this.notifyChange();
   }
 
   private findNearestBuildableGrid(

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "server": "node server/multiplayer-server.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "simulate:balance": "node scripts/simulate-balancing.mjs",
@@ -18,7 +19,8 @@
     "@vitejs/plugin-react": "^5.2.0",
     "phaser": "^4.1.0",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "ws": "^8.20.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

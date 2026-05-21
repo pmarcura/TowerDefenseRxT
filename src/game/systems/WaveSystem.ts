@@ -57,7 +57,7 @@ export class WaveSystem implements GameSystem {
     const state = this.registry.state;
     const wave = getWaveDefinition(state.wave.currentWaveIndex);
 
-    this.registry.applyActiveMap(getMapStage(wave.mapStageIndex));
+    this.registry.applyActiveMap(this.getMapStageForWave(wave));
     for (const playerId of getPlayablePlayerIds(state)) {
       state.combatStats[playerId].waveDamageDealt = 0;
     }
@@ -125,7 +125,7 @@ export class WaveSystem implements GameSystem {
 
       state.wave.active = false;
       state.wave.currentWaveIndex = nextWaveIndex;
-      this.registry.applyActiveMap(getMapStage(nextWave.mapStageIndex));
+      this.registry.applyActiveMap(this.getMapStageForWave(nextWave));
       this.registry.clearWaveReadiness(true);
       this.notifyNewRoutes(currentWave, nextWave);
 
@@ -142,7 +142,7 @@ export class WaveSystem implements GameSystem {
     }
 
     state.wave.currentWaveIndex = nextWaveIndex;
-    this.registry.applyActiveMap(getMapStage(nextWave.mapStageIndex));
+    this.registry.applyActiveMap(this.getMapStageForWave(nextWave));
     state.wave.active = false;
     this.registry.clearWaveReadiness(true);
     this.notifyNewRoutes(currentWave, nextWave);
@@ -166,29 +166,31 @@ export class WaveSystem implements GameSystem {
   }
 
   private createRuntimeGroups(wave: WaveDefinition): RuntimeWaveGroup[] {
-    return wave.groups.map((group) => ({
-      enemyTypeId: group.enemyTypeId,
-      remaining: group.count,
-      total: group.count,
-      intervalMs: group.intervalMs,
-      timerMs: group.startDelayMs,
-      pathIndex: group.pathIndex ?? 0
-    }));
+    const playerCount = getPlayablePlayerIds(this.registry.state).length;
+    const pressureScale = this.getPlayerPressureScale(playerCount);
+    const routeCount = Math.max(1, this.registry.state.activeMap.paths.length);
+    const routeCopies = this.getRouteCopies(playerCount, routeCount);
+
+    return wave.groups.flatMap((group, groupIndex) => {
+      const totalCount = Math.max(1, Math.round(group.count * pressureScale));
+      const countPerRoute = Math.max(1, Math.ceil(totalCount / routeCopies));
+      const basePathIndex = group.pathIndex ?? groupIndex % routeCount;
+
+      return Array.from({ length: routeCopies }, (_, copyIndex) => ({
+        enemyTypeId: group.enemyTypeId,
+        remaining: countPerRoute,
+        total: countPerRoute,
+        intervalMs: Math.max(90, Math.round(group.intervalMs / this.getTempoScale(playerCount))),
+        timerMs: group.startDelayMs + copyIndex * 420,
+        pathIndex: (basePathIndex + copyIndex) % routeCount
+      }));
+    });
   }
 
   private updateWaveSnapshot(): void {
     const state = this.registry.state;
     const wave = getWaveDefinition(state.wave.currentWaveIndex);
-    const groups = state.wave.active
-      ? this.activeGroups
-      : wave.groups.map((group) => ({
-          enemyTypeId: group.enemyTypeId,
-          remaining: group.count,
-          total: group.count,
-          intervalMs: group.intervalMs,
-          timerMs: group.startDelayMs,
-          pathIndex: group.pathIndex ?? 0
-        })) ?? [];
+    const groups = state.wave.active ? this.activeGroups : this.createRuntimeGroups(wave);
     const activePathIndexes = [...new Set(groups.map((group) => group.pathIndex))];
 
     state.wave.snapshot = {
@@ -233,5 +235,47 @@ export class WaveSystem implements GameSystem {
       tone,
       timerMs
     };
+  }
+
+  private getMapStageForWave(wave: WaveDefinition) {
+    return getMapStage(wave.mapStageIndex + this.getMapStageBoost());
+  }
+
+  private getMapStageBoost(): number {
+    const playerCount = getPlayablePlayerIds(this.registry.state).length;
+
+    if (playerCount >= 10) {
+      return 4;
+    }
+
+    if (playerCount >= 8) {
+      return 3;
+    }
+
+    if (playerCount >= 4) {
+      return 2;
+    }
+
+    return 0;
+  }
+
+  private getPlayerPressureScale(playerCount: number): number {
+    return 1 + Math.max(0, playerCount - 2) * 0.14;
+  }
+
+  private getTempoScale(playerCount: number): number {
+    return 1 + Math.max(0, playerCount - 2) * 0.025;
+  }
+
+  private getRouteCopies(playerCount: number, routeCount: number): number {
+    if (playerCount >= 8) {
+      return Math.min(routeCount, 3);
+    }
+
+    if (playerCount >= 4) {
+      return Math.min(routeCount, 2);
+    }
+
+    return 1;
   }
 }
