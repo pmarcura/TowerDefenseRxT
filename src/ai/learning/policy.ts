@@ -13,7 +13,7 @@ import type {
   GameState
 } from "../../game/models/types";
 import { getPlayablePlayerIds } from "../../game/utils/players";
-import { gridKey, isGridOnPath, isInsideGrid } from "../../game/utils/grid";
+import { countPathTilesInRange, gridKey, isGridOnPath, isInsideGrid } from "../../game/utils/grid";
 import type { Rng } from "../env/Rng";
 import type {
   HeadlessGameState,
@@ -463,8 +463,10 @@ const scoreGridAgainstPath = (
 ): number => {
   const { distance, progress } = getBestDistanceToPath(path, grid);
   const coverage = distance <= rangeTiles ? 5.5 : -Math.min(5, distance - rangeTiles);
+  const tilesInRange = countPathTilesInRange(grid, rangeTiles, path);
+  const tileCoverageBonus = Math.min(tilesInRange, 12) * 0.28;
 
-  return coverage + Math.max(0, 7 - distance) * 0.62 + progress * 4.2;
+  return coverage + Math.max(0, 7 - distance) * 0.62 + progress * 4.2 + tileCoverageBonus;
 };
 
 const getBestDistanceToPath = (
@@ -475,7 +477,9 @@ const getBestDistanceToPath = (
   let progress = 0;
 
   path.forEach((point, index) => {
-    const candidateDistance = Math.abs(point.col - grid.col) + Math.abs(point.row - grid.row);
+    const dx = point.col - grid.col;
+    const dy = point.row - grid.row;
+    const candidateDistance = Math.sqrt(dx * dx + dy * dy);
 
     if (candidateDistance < distance) {
       distance = candidateDistance;
@@ -500,7 +504,9 @@ const scoreGridAgainstPaths = (
     let bestProgress = 0;
 
     path.forEach((point, index) => {
-      const distance = Math.abs(point.col - grid.col) + Math.abs(point.row - grid.row);
+      const dx = point.col - grid.col;
+      const dy = point.row - grid.row;
+      const distance = Math.sqrt(dx * dx + dy * dy);
 
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -508,9 +514,11 @@ const scoreGridAgainstPaths = (
       }
     });
 
+    const tilesInRange = countPathTilesInRange(grid, rangeTiles, path);
+
     if (bestDistance <= rangeTiles) {
       coveredPaths += 1;
-      score += 3.5;
+      score += 3.5 + Math.min(tilesInRange, 10) * 0.22;
     } else {
       score -= Math.min(4, bestDistance - rangeTiles);
     }

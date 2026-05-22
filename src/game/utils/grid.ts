@@ -21,6 +21,18 @@ export const isGridOnPath = (grid: GridPoint, map: MapDefinition = mapDefinition
     path.some((pathPoint) => pathPoint.col === grid.col && pathPoint.row === grid.row)
   );
 
+/** Counts path tiles within Euclidean range (more accurate than Manhattan for tower coverage). */
+export const countPathTilesInRange = (
+  grid: GridPoint,
+  rangeTiles: number,
+  path: readonly GridPoint[]
+): number =>
+  path.filter((point) => {
+    const dx = point.col - grid.col;
+    const dy = point.row - grid.row;
+    return Math.sqrt(dx * dx + dy * dy) <= rangeTiles;
+  }).length;
+
 export const clampGrid = (grid: GridPoint, map: MapDefinition = mapDefinition): GridPoint => ({
   col: Math.min(Math.max(grid.col, 0), map.columns - 1),
   row: Math.min(Math.max(grid.row, 0), map.rows - 1)

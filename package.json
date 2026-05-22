@@ -16,11 +16,17 @@
     "lab:report": "node scripts/lab-report.mjs"
   },
   "dependencies": {
+    "pathfinding": "^0.4.18",
     "phaser": "^4.1.0",
+    "phaser3-rex-plugins": "^1.80.20",
     "ws": "^8.20.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@vitest/coverage-v8": "^4.1.7",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.7"
   }
 }
