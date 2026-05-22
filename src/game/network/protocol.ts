@@ -82,7 +82,17 @@ export type OnlineClientMessage =
   | {
       type: "game-action";
       action: GameAction;
+    }
+  | {
+      type: "chat";
+      text: string;
     };
+
+export type LobbyChat = {
+  fromDisplayName: string;
+  text: string;
+  ts: number;
+};
 
 export type OnlineServerMessage =
   | {
@@ -101,6 +111,11 @@ export type OnlineServerMessage =
       type: "game-action";
       action: GameAction;
       fromClientId: string;
+    }
+  | {
+      type: "chat";
+      fromDisplayName: string;
+      text: string;
     }
   | {
       type: "error";

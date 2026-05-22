@@ -3,6 +3,7 @@ import type { PlayerId } from "../models/types";
 import {
   DEFAULT_MULTIPLAYER_URL,
   DEFAULT_MULTIPLAYER_PORT,
+  type LobbyChat,
   type OnlineClientMessage,
   type OnlineClientState,
   type OnlineRoomState,
@@ -12,6 +13,7 @@ import {
 type Listener = () => void;
 type GameActionListener = (action: GameAction) => void;
 type RoomStartedListener = (room: OnlineRoomState) => void;
+type ChatListener = (msg: LobbyChat) => void;
 
 const getConfiguredServerUrl = (): string => {
   const envUrl = (import.meta as ImportMeta & { env?: { VITE_MULTIPLAYER_URL?: string } }).env
@@ -36,6 +38,7 @@ class OnlineClient {
   private readonly listeners = new Set<Listener>();
   private readonly gameActionListeners = new Set<GameActionListener>();
   private readonly roomStartedListeners = new Set<RoomStartedListener>();
+  private readonly chatListeners = new Set<ChatListener>();
   private reconnectPromise: Promise<void> | null = null;
   private state: OnlineClientState = {
     status: "idle",
@@ -72,6 +75,22 @@ class OnlineClient {
     return () => {
       this.roomStartedListeners.delete(listener);
     };
+  }
+
+  subscribeChat(listener: ChatListener): () => void {
+    this.chatListeners.add(listener);
+
+    return () => {
+      this.chatListeners.delete(listener);
+    };
+  }
+
+  sendChat(text: string): void {
+    const trimmed = text.trim().slice(0, 120);
+
+    if (trimmed.length > 0) {
+      this.send({ type: "chat", text: trimmed });
+    }
   }
 
   async connect(): Promise<void> {
@@ -218,6 +237,13 @@ class OnlineClient {
     if (message.type === "game-action") {
       for (const listener of this.gameActionListeners) {
         listener(message.action);
+      }
+      return;
+    }
+
+    if (message.type === "chat") {
+      for (const listener of this.chatListeners) {
+        listener({ fromDisplayName: message.fromDisplayName, text: message.text, ts: Date.now() });
       }
       return;
     }

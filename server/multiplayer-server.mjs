@@ -128,6 +128,11 @@ const handleClientMessage = (client, message) => {
     return;
   }
 
+  if (message.type === "chat") {
+    broadcastChat(client, String(message.text ?? "").trim().slice(0, 120));
+    return;
+  }
+
   throw new Error(`Tipo nao suportado: ${message.type}`);
 };
 
@@ -411,6 +416,15 @@ const relayGameAction = (client, action) => {
   }
 
   broadcast(room, { type: "game-action", action, fromClientId: client.id }, client.id);
+};
+
+const broadcastChat = (client, text) => {
+  if (!text || !client.roomCode) return;
+  const room = rooms.get(client.roomCode);
+  if (!room) return;
+  const seat = room.seats.find(s => s.clientId === client.id);
+  const fromDisplayName = seat?.displayName ?? "?";
+  broadcast(room, { type: "chat", fromDisplayName, text });
 };
 
 const canAutoStart = (room) => {

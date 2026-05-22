@@ -4,7 +4,7 @@ import { playerClassDefinitions } from "../data/playerClasses";
 import { gameDesign, playerColor, toHexColor } from "../design/gameDesignSystem";
 import { onlineClient } from "../network/OnlineClient";
 import { createSessionFromOnlineRoom } from "../network/onlineSession";
-import type { OnlineClientState, OnlineRoomSeat, OnlineRoomState } from "../network/protocol";
+import type { LobbyChat, OnlineClientState, OnlineRoomSeat, OnlineRoomState } from "../network/protocol";
 
 type LobbyButton = {
   x: number;
@@ -15,7 +15,7 @@ type LobbyButton = {
   onClick: () => void;
 };
 
-type LobbyFieldId = "displayName" | "roomCode";
+type LobbyFieldId = "displayName" | "roomCode" | "chat";
 
 type LobbyField = {
   id: LobbyFieldId;
@@ -39,7 +39,10 @@ export class OnlineLobbyScene extends Phaser.Scene {
   private aiFill = true;
   private busy = false;
   private focusedField: LobbyFieldId = "displayName";
+  private chatInput = "";
+  private readonly chatMessages: LobbyChat[] = [];
   private unsubscribeRoomStarted?: () => void;
+  private unsubscribeChat?: () => void;
 
   constructor() {
     super("OnlineLobbyScene");
@@ -52,9 +55,17 @@ export class OnlineLobbyScene extends Phaser.Scene {
     this.unsubscribeRoomStarted = onlineClient.subscribeRoomStarted((room) => {
       this.startOnlineRun(room);
     });
+    this.unsubscribeChat = onlineClient.subscribeChat((msg) => {
+      this.chatMessages.push(msg);
+      if (this.chatMessages.length > 5) {
+        this.chatMessages.shift();
+      }
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribeRoomStarted?.();
       this.unsubscribeRoomStarted = undefined;
+      this.unsubscribeChat?.();
+      this.unsubscribeChat = undefined;
       this.input.off("pointerdown", this.handlePointerDown, this);
       this.input.keyboard?.off("keydown", this.handleKeyDown, this);
     });
@@ -219,6 +230,34 @@ export class OnlineLobbyScene extends Phaser.Scene {
     this.drawButton(664, 620, 136, 44, "Remover bots", "limpar", 0xff8db4, () => onlineClient.clearBots(), isHost && !room.started && room.botCount > 0);
     this.drawButton(814, 620, 110, 44, "+1 bot", "host", 0x83f3ff, () => onlineClient.addBot(), isHost && !room.started && room.activeCount < room.maxPlayers);
     this.drawButton(938, 620, 136, 44, "Iniciar", "run", 0xffd36d, () => onlineClient.startRoom(), canStart);
+    this.drawChat();
+  }
+
+  private drawChat(): void {
+    const x = 516;
+    const y = 510;
+    const width = 700;
+    const focused = (this.focusedField as string) === "chat";
+
+    this.graphics.fillStyle(0x020712, 0.72);
+    this.graphics.fillRoundedRect(x, y, width, 96, 8);
+    this.graphics.lineStyle(focused ? 2 : 1, focused ? 0x83f3ff : 0x31556a, focused ? 0.7 : 0.3);
+    this.graphics.strokeRoundedRect(x, y, width, 96, 8);
+
+    this.chatMessages.forEach((msg, i) => {
+      this.text(x + 12, y + 6 + i * 14, `${msg.fromDisplayName}: ${msg.text}`, 9, "#a9bac6", "700", 0, width - 24);
+    });
+
+    const inputY = y + 72;
+    this.graphics.fillStyle(0x07131e, 0.9);
+    this.graphics.fillRoundedRect(x + 8, inputY, width - 76, 20, 4);
+    this.text(x + 14, inputY + 3, focused ? `${this.chatInput}_` : (this.chatInput || "Escreva e Enter..."), 9, focused ? "#edf7ff" : "#6f8492", "700", 0, width - 90);
+    this.graphics.fillStyle(0x83f3ff, 0.18);
+    this.graphics.fillRoundedRect(x + width - 64, inputY, 56, 20, 4);
+    this.text(x + width - 36, inputY + 3, "CHAT", 8, "#83f3ff", "900", 0.5);
+    this.registerButton(x + 8, inputY, width - 16, 20, () => {
+      this.focusedField = "chat";
+    }, true);
   }
 
   private drawClassPicker(
@@ -425,6 +464,13 @@ export class OnlineLobbyScene extends Phaser.Scene {
         void this.joinRoom();
       } else if (!room) {
         void this.createRoom();
+      } else if (this.focusedField === "chat" as LobbyFieldId) {
+        if (this.chatInput.trim().length > 0) {
+          onlineClient.sendChat(this.chatInput);
+          this.chatMessages.push({ fromDisplayName: this.displayName || "Eu", text: this.chatInput.trim(), ts: Date.now() });
+          if (this.chatMessages.length > 5) this.chatMessages.shift();
+          this.chatInput = "";
+        }
       } else {
         const localSeat = room.seats.find((seat) => seat.clientId === onlineClient.getState().clientId);
 
@@ -440,6 +486,8 @@ export class OnlineLobbyScene extends Phaser.Scene {
     if (event.key === "Backspace") {
       if (this.focusedField === "displayName") {
         this.updateDisplayName(this.displayName.slice(0, -1));
+      } else if (this.focusedField === "chat") {
+        this.chatInput = this.chatInput.slice(0, -1);
       } else {
         this.roomCode = this.roomCode.slice(0, -1);
       }
@@ -457,6 +505,13 @@ export class OnlineLobbyScene extends Phaser.Scene {
         this.updateDisplayName(`${this.displayName}${event.key}`);
       }
 
+      return;
+    }
+
+    if ((this.focusedField as string) === "chat") {
+      if (this.chatInput.length < 80 && event.key.length === 1) {
+        this.chatInput += event.key;
+      }
       return;
     }
 
