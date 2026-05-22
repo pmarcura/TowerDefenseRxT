@@ -64,6 +64,21 @@ export class FxRenderer {
       this.drawLabel(event, event.label ?? "KO", color, alpha, -28 - progress * 32);
       this.graphics.lineStyle(2, color, 0.7 * alpha);
       this.graphics.strokeCircle(event.position.x, event.position.y, 18 + progress * 18);
+      this.graphics.lineStyle(1, color, 0.35 * alpha);
+      this.graphics.strokeCircle(event.position.x, event.position.y, 30 + progress * 28);
+      const rayCount = 8;
+      for (let ray = 0; ray < rayCount; ray += 1) {
+        const angle = (Math.PI * 2 * ray) / rayCount + progress * 0.4;
+        const inner = 12 + progress * 6;
+        const outer = 26 + progress * 22;
+        this.graphics.lineStyle(1, color, 0.5 * alpha * (1 - progress));
+        this.graphics.lineBetween(
+          event.position.x + Math.cos(angle) * inner,
+          event.position.y + Math.sin(angle) * inner,
+          event.position.x + Math.cos(angle) * outer,
+          event.position.y + Math.sin(angle) * outer
+        );
+      }
       return;
     }
 

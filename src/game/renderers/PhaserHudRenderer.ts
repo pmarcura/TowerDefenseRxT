@@ -763,7 +763,10 @@ export class PhaserHudRenderer {
     this.drawScrim(0.74);
     this.panel(x, y, width, height, color, 0.95);
     this.textRole(x + 32, y + 24, won ? "Run vencida" : "Base perdida", "overlayTitle", won ? "#b4ff72" : "#ff8db4");
-    this.textRole(x + 34, y + 66, `${summary.wavesCleared} waves superadas · core ${summary.baseHpRemaining}/${state.activeMap.baseHp}`, "body", "#c4d4df");
+    const totalSecs = Math.floor(summary.elapsedMs / 1000);
+    const mm = String(Math.floor(totalSecs / 60)).padStart(2, "0");
+    const ss = String(totalSecs % 60).padStart(2, "0");
+    this.textRole(x + 34, y + 66, `${summary.wavesCleared} waves · core ${summary.baseHpRemaining}/${state.activeMap.baseHp} · ${mm}:${ss}`, "body", "#c4d4df");
 
     this.drawSummaryGrid(state, x + 34, y + 112, width - 68, 254);
     this.drawOverlayButton(x + 34, y + height - 74, 280, 48, "restart", "Jogar novamente", "volta para escolha de classe", gameDesign.color.gold, () => {

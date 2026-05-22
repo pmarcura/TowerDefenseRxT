@@ -262,21 +262,44 @@ export class UIScene extends Phaser.Scene {
       return;
     }
 
-    const alpha = Phaser.Math.Clamp(notice.timerMs / 420, 0, 1);
+    const fadeAlpha = Phaser.Math.Clamp(notice.timerMs / 420, 0, 1);
     const color = roundToneColors[notice.tone];
+    const colorHex = Number.parseInt(color.replace("#", "0x"), 16);
+    const isBossNotice = notice.tone === "boss";
 
-    this.graphics.fillStyle(0x020712, 0.74 * alpha);
-    this.graphics.fillRoundedRect(442, 76, 396, 54, 8);
-    this.graphics.lineStyle(2, Number.parseInt(color.replace("#", "0x"), 16), 0.55 * alpha);
-    this.graphics.strokeRoundedRect(442, 76, 396, 54, 8);
+    if (isBossNotice) {
+      const panelW = 620;
+      const panelX = (GAME_WIDTH - panelW) / 2;
+      const panelY = 66;
+      const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 160);
+
+      this.graphics.fillStyle(0x0d0208, 0.88 * fadeAlpha);
+      this.graphics.fillRoundedRect(panelX, panelY, panelW, 76, 10);
+      this.graphics.lineStyle(3, colorHex, 0.72 * fadeAlpha);
+      this.graphics.strokeRoundedRect(panelX, panelY, panelW, 76, 10);
+      this.graphics.lineStyle(1, colorHex, 0.18 * fadeAlpha * pulse);
+      this.graphics.strokeRoundedRect(panelX - 10, panelY - 6, panelW + 20, 88, 12);
+      this.graphics.lineStyle(2, colorHex, 0.12 * fadeAlpha);
+      this.graphics.lineBetween(panelX + 20, panelY + 38, panelX + panelW - 20, panelY + 38);
+
+      this.noticeTitleText.setFontSize(28);
+      this.noticeTitleText.setPosition(GAME_WIDTH / 2, panelY + 14);
+      this.noticeSubtitleText.setPosition(GAME_WIDTH / 2, panelY + 50);
+    } else {
+      this.graphics.fillStyle(0x020712, 0.74 * fadeAlpha);
+      this.graphics.fillRoundedRect(442, 76, 396, 54, 8);
+      this.graphics.lineStyle(2, colorHex, 0.55 * fadeAlpha);
+      this.graphics.strokeRoundedRect(442, 76, 396, 54, 8);
+      this.noticeTitleText.setFontSize(22);
+      this.noticeTitleText.setPosition(GAME_WIDTH / 2, 84);
+      this.noticeSubtitleText.setPosition(GAME_WIDTH / 2, 112);
+    }
+
     this.noticeTitleText.setText(notice.title.toUpperCase());
     this.noticeTitleText.setColor(color);
-    this.noticeTitleText.setAlpha(alpha);
-    this.noticeTitleText.setPosition(GAME_WIDTH / 2, 84);
-    this.noticeTitleText.setFontSize(22);
+    this.noticeTitleText.setAlpha(fadeAlpha);
     this.noticeSubtitleText.setText(notice.subtitle);
-    this.noticeSubtitleText.setAlpha(alpha);
-    this.noticeSubtitleText.setPosition(GAME_WIDTH / 2, 112);
+    this.noticeSubtitleText.setAlpha(fadeAlpha);
   }
 
   private updateResultText(state: GameState): void {
