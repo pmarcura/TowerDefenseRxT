@@ -142,7 +142,9 @@ const skillTemplates: readonly SkillTemplate[] = [
 ];
 
 export const skillDefinitions: readonly SkillDefinition[] = skillTemplates.flatMap((template) =>
-  (["p1", "p2"] as const).map((playerId) => instantiateSkill(playerId, template))
+  Array.from({ length: 12 }, (_, index) => `p${index + 1}` as PlayerId).map((playerId) =>
+    instantiateSkill(playerId, template)
+  )
 );
 
 export const getSkillDefinition = (skillId: string): SkillDefinition => {

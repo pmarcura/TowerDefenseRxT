@@ -37,6 +37,7 @@ export class AudioSystem implements GameSystem {
     const state = this.registry.state;
 
     if (state.settings.muted || state.settings.masterVolume <= 0) {
+      this.resetMusicScheduler();
       return;
     }
 
@@ -137,16 +138,18 @@ export class AudioSystem implements GameSystem {
 
   private updateMusic(context: AudioContext, state: GameState): void {
     if (state.settings.musicVolume <= 0) {
-      this.musicMood = "silent";
+      this.resetMusicScheduler();
       return;
     }
 
     const mood = this.getMusicMood(state);
 
     if (mood === "silent") {
-      this.musicMood = mood;
+      this.resetMusicScheduler();
       return;
     }
+
+    const profile = this.getMusicProfile(mood);
 
     if (mood !== this.musicMood) {
       this.musicMood = mood;
@@ -154,14 +157,33 @@ export class AudioSystem implements GameSystem {
       this.musicNextBeatAt = context.currentTime + 0.04;
     }
 
-    const profile = this.getMusicProfile(mood);
+    if (
+      this.musicNextBeatAt <= 0 ||
+      this.musicNextBeatAt < context.currentTime - profile.beatSeconds
+    ) {
+      this.musicNextBeatAt = context.currentTime + 0.04;
+    }
+
     const lookahead = context.currentTime + 0.12;
+    let scheduledBeats = 0;
 
     while (this.musicNextBeatAt <= lookahead) {
       this.scheduleMusicBeat(context, mood, profile, this.musicNextBeatAt, this.musicStep);
       this.musicNextBeatAt += profile.beatSeconds;
       this.musicStep += 1;
+      scheduledBeats += 1;
+
+      if (scheduledBeats >= 8) {
+        this.musicNextBeatAt = context.currentTime + profile.beatSeconds;
+        break;
+      }
     }
+  }
+
+  private resetMusicScheduler(): void {
+    this.musicMood = "silent";
+    this.musicNextBeatAt = 0;
+    this.musicStep = 0;
   }
 
   private getMusicMood(state: GameState): MusicMood {

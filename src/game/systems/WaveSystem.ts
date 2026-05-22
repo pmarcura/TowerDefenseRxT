@@ -5,6 +5,12 @@ import { GameRegistry } from "../GameRegistry";
 import type { WaveDefinition } from "../models/types";
 import { RunTelemetry } from "../telemetry/RunTelemetry";
 import { getPlayablePlayerIds } from "../utils/players";
+import {
+  getEnemyPressureScale,
+  getEnemyTempoScale,
+  getRouteCopies as getScaledRouteCopies,
+  getWaveMapStageBoost
+} from "../utils/playerScaling";
 import type { EconomySystem } from "./EconomySystem";
 import type { EnemySystem } from "./EnemySystem";
 import type { GameSystem } from "./GameSystem";
@@ -238,44 +244,20 @@ export class WaveSystem implements GameSystem {
   }
 
   private getMapStageForWave(wave: WaveDefinition) {
-    return getMapStage(wave.mapStageIndex + this.getMapStageBoost());
-  }
-
-  private getMapStageBoost(): number {
     const playerCount = getPlayablePlayerIds(this.registry.state).length;
 
-    if (playerCount >= 10) {
-      return 4;
-    }
-
-    if (playerCount >= 8) {
-      return 3;
-    }
-
-    if (playerCount >= 4) {
-      return 2;
-    }
-
-    return 0;
+    return getMapStage(wave.mapStageIndex + getWaveMapStageBoost(playerCount));
   }
 
   private getPlayerPressureScale(playerCount: number): number {
-    return 1 + Math.max(0, playerCount - 2) * 0.14;
+    return getEnemyPressureScale(playerCount);
   }
 
   private getTempoScale(playerCount: number): number {
-    return 1 + Math.max(0, playerCount - 2) * 0.025;
+    return getEnemyTempoScale(playerCount);
   }
 
   private getRouteCopies(playerCount: number, routeCount: number): number {
-    if (playerCount >= 8) {
-      return Math.min(routeCount, 3);
-    }
-
-    if (playerCount >= 4) {
-      return Math.min(routeCount, 2);
-    }
-
-    return 1;
+    return getScaledRouteCopies(playerCount, routeCount);
   }
 }

@@ -2,6 +2,7 @@ import type { GameAction } from "../actions/types";
 import type { PlayerId } from "../models/types";
 import {
   DEFAULT_MULTIPLAYER_URL,
+  DEFAULT_MULTIPLAYER_PORT,
   type OnlineClientMessage,
   type OnlineClientState,
   type OnlineRoomState,
@@ -10,18 +11,31 @@ import {
 
 type Listener = () => void;
 type GameActionListener = (action: GameAction) => void;
+type RoomStartedListener = (room: OnlineRoomState) => void;
 
 const getConfiguredServerUrl = (): string => {
   const envUrl = (import.meta as ImportMeta & { env?: { VITE_MULTIPLAYER_URL?: string } }).env
     ?.VITE_MULTIPLAYER_URL;
 
-  return typeof envUrl === "string" && envUrl.length > 0 ? envUrl : DEFAULT_MULTIPLAYER_URL;
+  if (typeof envUrl === "string" && envUrl.length > 0) {
+    return envUrl;
+  }
+
+  if (typeof window === "undefined") {
+    return DEFAULT_MULTIPLAYER_URL;
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const hostname = window.location.hostname || "127.0.0.1";
+
+  return `${protocol}://${hostname}:${DEFAULT_MULTIPLAYER_PORT}`;
 };
 
 class OnlineClient {
   private socket: WebSocket | null = null;
   private readonly listeners = new Set<Listener>();
   private readonly gameActionListeners = new Set<GameActionListener>();
+  private readonly roomStartedListeners = new Set<RoomStartedListener>();
   private reconnectPromise: Promise<void> | null = null;
   private state: OnlineClientState = {
     status: "idle",
@@ -49,6 +63,14 @@ class OnlineClient {
 
     return () => {
       this.gameActionListeners.delete(listener);
+    };
+  }
+
+  subscribeRoomStarted(listener: RoomStartedListener): () => void {
+    this.roomStartedListeners.add(listener);
+
+    return () => {
+      this.roomStartedListeners.delete(listener);
     };
   }
 
@@ -129,8 +151,16 @@ class OnlineClient {
     this.send({ type: "add-bot", seatId });
   }
 
+  fillBots(): void {
+    this.send({ type: "fill-bots" });
+  }
+
   removeBot(seatId: string): void {
     this.send({ type: "remove-bot", seatId });
+  }
+
+  clearBots(): void {
+    this.send({ type: "clear-bots" });
   }
 
   sendGameAction(action: GameAction): void {
@@ -177,7 +207,9 @@ class OnlineClient {
       this.applyRoom(message.room);
 
       if (message.type === "room-started") {
-        window.dispatchEvent(new CustomEvent("aegis:online-room-started", { detail: message.room }));
+        for (const listener of this.roomStartedListeners) {
+          listener(message.room);
+        }
       }
 
       return;

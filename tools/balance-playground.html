@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aegis Balance Playground</title>
+  <title>Aegis Balance & AI Learning Playground</title>
+  <script type="module" src="/src/lab/playgroundEntry.ts"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -18,6 +19,7 @@
       --color-magenta: #ff007f;
       --color-green: #00ff66;
       --color-yellow: #ffcc00;
+      --color-purple: #8b5cf6;
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
     }
@@ -37,7 +39,7 @@
       font-family: 'Plus Jakarta Sans', sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
-      padding: 2rem;
+      padding: 1.5rem;
     }
 
     h1, h2, h3, h4 {
@@ -47,7 +49,7 @@
     }
 
     .container {
-      max-width: 1400px;
+      max-width: 1560px;
       margin: 0 auto;
     }
 
@@ -55,9 +57,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 2.5rem;
+      margin-bottom: 2rem;
       border-bottom: 1px solid var(--border-color);
-      padding-bottom: 1.5rem;
+      padding-bottom: 1.2rem;
     }
 
     .logo-container {
@@ -75,13 +77,13 @@
       align-items: center;
       justify-content: center;
       font-weight: 800;
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       color: var(--bg-dark);
       box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
     }
 
     .header-title h1 {
-      font-size: 2.2rem;
+      font-size: 2rem;
       background: linear-gradient(90deg, #ffffff, #94a3b8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -89,17 +91,19 @@
 
     .header-title p {
       color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-top: 4px;
+      font-size: 0.9rem;
+      margin-top: 2px;
     }
 
+    /* main grid: left controls, right display */
     .grid-layout {
       display: grid;
-      grid-template-columns: 460px 1fr;
-      gap: 2rem;
+      grid-template-columns: 420px 1fr;
+      gap: 1.5rem;
+      align-items: start;
     }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 1200px) {
       .grid-layout {
         grid-template-columns: 1fr;
       }
@@ -111,7 +115,7 @@
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--border-color);
       border-radius: 18px;
-      padding: 1.8rem;
+      padding: 1.5rem;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -121,8 +125,8 @@
     }
 
     .section-title {
-      font-size: 1.4rem;
-      margin-bottom: 1.5rem;
+      font-size: 1.3rem;
+      margin-bottom: 1.2rem;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -130,16 +134,17 @@
       padding-left: 10px;
     }
 
+    /* Sliders styling */
     .slider-group {
-      margin-bottom: 1.6rem;
+      margin-bottom: 1.2rem;
     }
 
     .slider-label {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
+      margin-bottom: 0.4rem;
+      font-size: 0.85rem;
       font-weight: 600;
     }
 
@@ -149,10 +154,10 @@
 
     .slider-value {
       color: var(--color-cyan);
-      font-family: monospace;
+      font-family: 'JetBrains Mono', monospace;
       font-weight: 700;
       background: rgba(0, 240, 255, 0.08);
-      padding: 2px 8px;
+      padding: 2px 6px;
       border-radius: 6px;
       border: 1px solid rgba(0, 240, 255, 0.15);
     }
@@ -169,8 +174,8 @@
 
     .input-range::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--color-cyan), #0099ff);
       cursor: pointer;
@@ -179,17 +184,17 @@
     }
 
     .input-range::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
+      transform: scale(1.25);
     }
 
     .tower-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 1.2rem;
-      max-height: 280px;
+      gap: 1rem;
+      max-height: 220px;
       overflow-y: auto;
-      padding-right: 8px;
-      margin-top: 1rem;
+      padding-right: 6px;
+      margin-top: 0.8rem;
     }
 
     .tower-grid::-webkit-scrollbar {
@@ -209,15 +214,15 @@
     .button-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 1.5rem;
+      gap: 8px;
+      margin-top: 1.2rem;
     }
 
     .btn {
-      padding: 0.8rem 1.2rem;
+      padding: 0.7rem 1rem;
       border-radius: 10px;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       cursor: pointer;
       border: none;
       transition: all 0.2s ease;
@@ -239,13 +244,13 @@
     }
 
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.06);
       color: var(--text-main);
       border: 1px solid var(--border-color);
     }
 
     .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.12);
       transform: translateY(-2px);
     }
 
@@ -253,172 +258,89 @@
       grid-column: 1 / -1;
     }
 
+    .btn-active {
+      background: rgba(0, 240, 255, 0.15) !important;
+      border-color: var(--color-cyan) !important;
+      color: var(--color-cyan) !important;
+    }
+
     .json-box {
       background: rgba(0, 0, 0, 0.4);
       border: 1px solid var(--border-color);
       border-radius: 10px;
-      padding: 1rem;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 0.8rem;
+      padding: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
       color: var(--color-cyan);
-      max-height: 150px;
+      max-height: 120px;
       overflow-y: auto;
-      margin-top: 1rem;
+      margin-top: 0.8rem;
     }
 
-    .dropzone-container {
-      border: 2px dashed rgba(255, 255, 255, 0.15);
-      border-radius: 16px;
-      padding: 2.5rem 1.5rem;
-      text-align: center;
-      cursor: pointer;
+    .steps-section {
       background: rgba(255, 255, 255, 0.01);
-      transition: all 0.3s ease;
-      margin-bottom: 2rem;
-    }
-
-    .dropzone-container:hover, .dropzone-container.dragover {
-      border-color: var(--color-cyan);
-      background: rgba(0, 240, 255, 0.03);
-    }
-
-    .dropzone-icon {
-      font-size: 2.5rem;
-      margin-bottom: 0.8rem;
-      color: var(--color-cyan);
-    }
-
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.2rem;
-      margin-bottom: 2rem;
-    }
-
-    @media (max-width: 768px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    .stat-card {
-      background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--border-color);
       border-radius: 12px;
-      padding: 1.2rem;
-      text-align: center;
+      padding: 1rem;
+      margin-top: 1.5rem;
     }
 
-    .stat-label {
+    .steps-title {
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      margin-bottom: 0.6rem;
+    }
+
+    .steps-list {
+      padding-left: 18px;
+      font-size: 0.8rem;
       color: var(--text-muted);
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      margin-bottom: 6px;
+      line-height: 1.5;
     }
 
-    .stat-value {
-      font-size: 1.8rem;
-      font-weight: 800;
-      font-family: 'Outfit', sans-serif;
+    .steps-list li {
+      margin-bottom: 5px;
     }
 
-    .stat-diff {
-      font-size: 0.8rem;
-      margin-top: 4px;
-      font-weight: 600;
+    .steps-list code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 1px 4px;
+      border-radius: 4px;
+      color: #f8fafc;
+      font-family: 'JetBrains Mono', monospace;
     }
 
-    .diff-better {
-      color: var(--color-green);
-    }
-
-    .diff-worse {
-      color: var(--color-magenta);
-    }
-
-    .charts-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    @media (max-width: 900px) {
-      .charts-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .chart-container {
-      background: rgba(255, 255, 255, 0.015);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.2rem;
-      height: 320px;
-      position: relative;
-    }
-
-    .chart-title {
-      font-size: 1rem;
-      color: #e2e8f0;
-      margin-bottom: 1rem;
-      font-weight: 600;
-    }
-
-    .alerts-container {
-      background: rgba(255, 0, 127, 0.03);
-      border: 1px solid rgba(255, 0, 127, 0.2);
-      border-radius: 12px;
-      padding: 1.2rem;
-      margin-bottom: 2rem;
-    }
-
-    .alerts-title {
-      color: var(--color-magenta);
-      font-size: 1.1rem;
-      margin-bottom: 0.8rem;
+    /* RIGHT COLUMN: TABS & RESULTS */
+    .tabs-header {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 8px;
-    }
-
-    .alert-list {
-      list-style-type: none;
-    }
-
-    .alert-item {
-      font-size: 0.9rem;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      color: #e2e8f0;
-    }
-
-    .alert-item::before {
-      content: "⚠️";
-      font-size: 0.85rem;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 10px;
       border-bottom: 1px solid var(--border-color);
       margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .main-tabs {
+      display: flex;
+      gap: 6px;
     }
 
     .tab-btn {
       background: none;
       border: none;
       color: var(--text-muted);
-      padding: 8px 16px;
+      padding: 10px 18px;
       font-weight: 600;
+      font-family: 'Outfit', sans-serif;
       cursor: pointer;
-      font-size: 0.95rem;
-      border-bottom: 2px solid transparent;
+      font-size: 1rem;
+      border-bottom: 3px solid transparent;
       transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
     }
 
     .tab-btn.active {
@@ -434,58 +356,597 @@
       display: block;
     }
 
-    .comparison-banner {
-      background: linear-gradient(90deg, rgba(0, 240, 255, 0.05), rgba(255, 0, 127, 0.05));
-      border: 1px dashed var(--border-color);
-      border-radius: 12px;
-      padding: 1.2rem;
+    /* Polling Control Area */
+    .polling-bar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    .comparison-details p {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-    }
-
-    .comparison-details strong {
-      color: var(--text-main);
-    }
-
-    /* Steps Section Styling */
-    .steps-section {
-      background: rgba(255, 255, 255, 0.01);
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.4);
       border: 1px solid var(--border-color);
+      padding: 0.8rem 1.2rem;
       border-radius: 12px;
-      padding: 1.2rem;
-      margin-top: 2rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 12px;
     }
 
-    .steps-title {
-      font-size: 1.1rem;
-      color: #e2e8f0;
-      margin-bottom: 0.8rem;
-    }
-
-    .steps-list {
-      padding-left: 20px;
+    .polling-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-size: 0.85rem;
-      color: var(--text-muted);
-      line-height: 1.5;
     }
 
-    .steps-list li {
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--color-yellow);
+      box-shadow: 0 0 8px var(--color-yellow);
+    }
+
+    .status-dot.active {
+      background-color: var(--color-green);
+      box-shadow: 0 0 8px var(--color-green);
+    }
+
+    .status-dot.error {
+      background-color: var(--color-magenta);
+      box-shadow: 0 0 8px var(--color-magenta);
+    }
+
+    .status-text {
+      color: var(--text-muted);
+    }
+
+    .polling-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Sub-tab selection (Balance vs AI) */
+    .sub-selector {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 1.5rem;
+    }
+
+    .sub-sel-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sub-sel-btn.active {
+      background: var(--bg-card-hover);
+      color: var(--color-cyan);
+    }
+
+    /* Stat Cards */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.1rem;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
       margin-bottom: 6px;
     }
 
-    .steps-list code {
+    .stat-value {
+      font-size: 1.7rem;
+      font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .stat-diff {
+      font-size: 0.8rem;
+      margin-top: 4px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .diff-better {
+      color: var(--color-green);
+    }
+
+    .diff-worse {
+      color: var(--color-magenta);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-container {
+      background: rgba(15, 23, 42, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.2rem;
+      height: 300px;
+      position: relative;
+    }
+
+    .chart-title {
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      margin-bottom: 0.8rem;
+      font-weight: 600;
+    }
+
+    .bottom-reports-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+    }
+
+    @media (max-width: 1000px) {
+      .bottom-reports-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .alerts-container {
+      background: rgba(255, 0, 127, 0.03);
+      border: 1px solid rgba(255, 0, 127, 0.15);
+      border-radius: 14px;
+      padding: 1.2rem;
+    }
+
+    .alerts-title {
+      color: var(--color-magenta);
+      font-size: 1rem;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    .alert-list {
+      list-style-type: none;
+    }
+
+    .alert-item {
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: #e2e8f0;
+      line-height: 1.4;
+    }
+
+    .alert-item::before {
+      content: "⚡";
+      color: var(--color-magenta);
+    }
+
+    .table-container {
+      background: rgba(15, 23, 42, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.2rem;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .table-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.8rem;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      color: #e2e8f0;
+    }
+
+    .td-highlight {
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Policy Weights Viewer */
+    .weights-panel {
+      background: rgba(15, 23, 42, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.2rem;
+    }
+
+    .weights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      padding-right: 6px;
+      font-size: 0.8rem;
+    }
+
+    .weight-card {
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      padding: 8px 10px;
+      border-radius: 8px;
+    }
+
+    .weight-card-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .weight-name {
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .weight-val {
+      color: var(--color-cyan);
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .weight-bar-bg {
+      width: 100%;
+      height: 4px;
       background: rgba(255, 255, 255, 0.08);
-      padding: 1px 5px;
-      border-radius: 4px;
-      color: #f8fafc;
-      font-family: monospace;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .weight-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0099ff, var(--color-cyan));
+      border-radius: 2px;
+    }
+
+    /* 2D VISUALIZER STYLES */
+    .visualizer-container {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 950px) {
+      .visualizer-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .visualizer-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-color);
+      padding: 0.8rem 1.2rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .vis-control-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    select.vis-select {
+      background: #0d1527;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .vis-control-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .canvas-wrap {
+      background: #03060f;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 8px;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+      position: relative;
+      width: 100%;
+    }
+
+    canvas#vis-canvas {
+      background: #040814;
+      display: block;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.02);
+      max-width: 100%;
+      height: auto;
+    }
+
+    .vis-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .vis-telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .telemetry-card {
+      background: rgba(15, 23, 42, 0.3);
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .telemetry-card-full {
+      grid-column: 1 / -1;
+    }
+
+    .telemetry-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 2px;
+    }
+
+    .telemetry-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .telemetry-val-credits {
+      color: var(--color-yellow);
+    }
+
+    .telemetry-val-hp {
+      color: var(--color-magenta);
+    }
+
+    .vis-log-panel {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      height: 220px;
+      max-height: 220px;
+    }
+
+    .log-panel-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .log-scroller {
+      flex: 1;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.35;
+      padding-right: 4px;
+      scroll-behavior: smooth;
+    }
+
+    .log-scroller::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .log-scroller::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 99px;
+    }
+
+    .log-line {
+      margin-bottom: 3px;
+      border-left: 2px solid transparent;
+      padding-left: 5px;
+      padding-top: 1px;
+      padding-bottom: 1px;
+    }
+
+    .log-line.system { border-color: var(--text-muted); opacity: 0.8; }
+    .log-line.bot { border-color: var(--color-cyan); color: #7dd3fc; opacity: 0.7; }
+    .log-line.wave { border-color: var(--color-purple); color: #c084fc; font-weight: 600; }
+    .log-line.enemy { border-color: var(--color-magenta); color: #fda4af; }
+    .log-line.victory { border-color: var(--color-green); color: var(--color-green); font-weight: 700; }
+    .log-line.defeat { border-color: var(--color-magenta); color: var(--color-magenta); font-weight: 700; }
+
+    /* BUILD TOOLBAR CSS */
+    .canvas-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .build-toolbar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-color);
+      padding: 8px;
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .toolbar-btn {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 8px;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-align: center;
+    }
+
+    .toolbar-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      transform: translateY(-1px);
+    }
+
+    .toolbar-btn.active {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--color-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+    }
+
+    .toolbar-btn[data-tool="select"].active {
+      border-color: var(--color-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    .toolbar-btn[data-tool="vitrail-laser"].active {
+      border-color: var(--color-yellow);
+      box-shadow: 0 0 12px rgba(255, 204, 0, 0.25);
+    }
+
+    .toolbar-btn[data-tool="chant-chain"].active {
+      border-color: var(--color-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    .toolbar-btn[data-tool="nave-bell"].active {
+      border-color: var(--color-purple);
+      box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
+    }
+
+    .toolbar-btn[data-tool="sell"].active {
+      border-color: var(--color-magenta);
+      box-shadow: 0 0 12px rgba(255, 0, 127, 0.25);
+    }
+
+    .tool-icon {
+      font-size: 1.25rem;
+    }
+
+    .tool-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .tool-name {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .tool-cost {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-top: 1px;
     }
   </style>
 </head>
@@ -493,16 +954,16 @@
   <div class="container">
     <header>
       <div class="logo-container">
-        <div class="logo-badge">⚔️</div>
+        <div class="logo-badge">🛡️</div>
         <div class="header-title">
-          <h1>Aegis Balance Playground</h1>
-          <p>Ajuste a economia, torres e monstros em tempo real e teste com simulações em massa.</p>
+          <h1>Aegis Balance & AI Learning Playground</h1>
+          <p>Ajuste o balanço do jogo em tempo real, visualize partidas e acompanhe a evolução da IA.</p>
         </div>
       </div>
     </header>
 
     <div class="grid-layout">
-      <!-- PAINEL DE CONTROLES (ESQUERDA) -->
+      <!-- LEFT SIDEBAR: ADJUST BALANCE -->
       <div class="glass-panel">
         <h2 class="section-title">Ajustar Balanço</h2>
         
@@ -542,7 +1003,7 @@
           <input type="range" class="input-range" id="slider-wave-bonus" min="0.5" max="2.0" step="0.05" value="1.0">
         </div>
 
-        <h3 class="slider-title" style="margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1rem;">Multiplicador de Dano das Torres</h3>
+        <h3 class="slider-title" style="margin-top: 1.2rem; margin-bottom: 0.5rem; font-size: 0.95rem; font-weight: 600;">Multiplicador de Dano das Torres</h3>
         <div class="tower-grid">
           <!-- VITRAIL LASER -->
           <div class="slider-group">
@@ -550,7 +1011,7 @@
               <span class="slider-title">Lente de Vitral (Vitrail)</span>
               <span class="slider-value" id="val-vitrail">1.0x</span>
             </div>
-            <input type="range" class="input-range tower-slider" id="slider-vitrail" data-id="vitrail-laser" min="0.5" max="2.0" step="0.05" value="1.0">
+            <input type="range" class="input-range tower-slider" id="slider-vitrail" data-id="vitrail-laser" min="0.5" max="3.0" step="0.05" value="1.0">
           </div>
 
           <!-- CHANT CHAIN -->
@@ -559,112 +1020,250 @@
               <span class="slider-title">Coro de Ressonância (Chant)</span>
               <span class="slider-value" id="val-chant">1.0x</span>
             </div>
-            <input type="range" class="input-range tower-slider" id="slider-chant" data-id="chant-chain" min="0.5" max="2.0" step="0.05" value="1.0">
+            <input type="range" class="input-range tower-slider" id="slider-chant" data-id="chant-chain" min="0.5" max="3.0" step="0.05" value="1.0">
           </div>
 
           <!-- NAVE BELL -->
           <div class="slider-group">
             <div class="slider-label">
               <span class="slider-title">Sino da Nave (Bell)</span>
-              <span class="slider-value" id="val-bell" data-id="nave-bell">1.0x</span>
+              <span class="slider-value" id="val-bell">1.0x</span>
             </div>
-            <input type="range" class="input-range tower-slider" id="slider-bell" data-id="nave-bell" min="0.5" max="2.0" step="0.05" value="1.0">
+            <input type="range" class="input-range tower-slider" id="slider-bell" data-id="nave-bell" min="0.5" max="3.0" step="0.05" value="1.0">
           </div>
         </div>
 
         <div class="button-group">
-          <button class="btn btn-secondary" id="btn-reset">Resetar</button>
-          <button class="btn btn-primary" id="btn-download">Baixar JSON</button>
-          <button class="btn btn-primary btn-full" id="btn-copy">Copiar JSON</button>
+          <button class="btn btn-secondary" id="btn-reset">Resetar Sliders</button>
+          <button class="btn btn-primary" id="btn-save-to-game">Salvar no Jogo</button>
+          <button class="btn btn-primary btn-full" id="btn-sim-local">Simular 100 Partidas</button>
+          <button class="btn btn-primary btn-full" id="btn-train-local" style="background: linear-gradient(135deg, var(--color-purple), var(--color-magenta)); color: #fff; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.35);">Treinar IA Local (3 Gen)</button>
         </div>
 
-        <div class="json-box" id="json-preview">{}</div>
+        <div class="steps-section" style="margin-top: 1rem;">
+          <h4 class="steps-title">Console de Operações</h4>
+          <div id="local-status-box" style="background: rgba(0, 0, 0, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--color-cyan); min-height: 80px; max-height: 150px; overflow-y: auto; line-height: 1.4; white-space: pre-wrap;">Pronto. Clique nos botões acima para Simular ou Treinar a IA localmente.</div>
+        </div>
 
-        <div class="steps-section">
-          <h4 class="steps-title">Como testar as mudanças?</h4>
-          <ol class="steps-list">
-            <li>Os valores acima são salvos <strong>automaticamente no navegador</strong>.</li>
-            <li>Para treinar ou simular no terminal, clique em <strong>Copiar JSON</strong> e cole no arquivo: <code>server/balance-overrides.json</code></li>
-            <li>Execute a simulação em lote: <code>node tools/batch-balance-test.mjs --runs 200</code></li>
-            <li>Arraste o arquivo <code>tools/latest-balance-results.json</code> gerado para a zona à direita!</li>
-          </ol>
+        <div style="margin-top: 1rem;">
+          <a href="/index.html" class="btn btn-secondary btn-full" style="text-decoration: none; text-align: center;">Voltar ao Jogo</a>
         </div>
       </div>
 
-      <!-- PAINEL DE RESULTADOS (DIREITA) -->
-      <div class="glass-panel">
-        <h2 class="section-title">Resultados da Simulação IA</h2>
-        
-        <!-- DROPZONE -->
-        <div class="dropzone-container" id="dropzone">
-          <div class="dropzone-icon">📊</div>
-          <h3>Arraste o arquivo de simulação aqui</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">
-            Solte o arquivo <code>latest-balance-results.json</code> para carregar os gráficos
-          </p>
+      <!-- RIGHT DASHBOARD: REPORTS & VISUALIZER -->
+      <div class="glass-panel" style="min-height: 600px;">
+        <div class="tabs-header">
+          <div class="main-tabs">
+            <button class="tab-btn active" id="tab-btn-reports" onclick="switchMainTab('reports')">Relatórios de Simulação</button>
+            <button class="tab-btn" id="tab-btn-visualizer" onclick="switchMainTab('visualizer')">Visualizador de Partidas 2D</button>
+          </div>
+          <div class="polling-bar" style="margin-bottom: 0; padding: 0.4rem 0.8rem; border-radius: 8px;">
+            <div class="polling-status">
+              <div class="status-dot active" id="poll-indicator"></div>
+              <span class="status-text" id="poll-status-text">Iniciando...</span>
+            </div>
+            <div class="polling-controls">
+              <label class="checkbox-container">
+                <input type="checkbox" id="chk-auto-poll" checked onchange="toggleAutoPoll(this.checked)">
+                <span>Auto-Recarregar (3s)</span>
+              </label>
+              <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="forceReload()">Recarregar</button>
+            </div>
+          </div>
         </div>
 
-        <!-- DASHBOARD CONTAINER -->
-        <div id="dashboard-content" style="display: none;">
-          <!-- COMPARISON BANNER -->
-          <div class="comparison-banner" id="comparison-banner" style="display: none;">
-            <div class="comparison-details">
-              <p>Comparando contra: <strong id="comp-runs-label">Nenhum</strong></p>
-            </div>
-            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;" id="btn-clear-comp">Limpar Comparação</button>
+        <!-- TAB CONTENT: REPORTS -->
+        <div class="tab-content active" id="tab-content-reports">
+          <div class="sub-selector">
+            <button class="sub-sel-btn active" id="sub-btn-balance" onclick="switchReportType('balance')">Balanço do Jogo</button>
+            <button class="sub-sel-btn" id="sub-btn-learning" onclick="switchReportType('learning')">Auto-Aprendizado IA</button>
           </div>
 
-          <!-- CARDS -->
+          <!-- Cards Summary Grid -->
           <div class="dashboard-grid">
             <div class="stat-card">
-              <div class="stat-label">Taxa de Vitória (Win Rate)</div>
-              <div class="stat-value" id="stat-winrate">0.0%</div>
-              <div class="stat-diff" id="diff-winrate"></div>
+              <div class="stat-label" id="card-label-1">Taxa de Vitória (Win Rate)</div>
+              <div class="stat-value" id="card-val-1">--</div>
+              <div class="stat-diff" id="card-diff-1"></div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Avg Waves Sobrevividas</div>
-              <div class="stat-value" id="stat-waves">0.0</div>
-              <div class="stat-diff" id="diff-waves"></div>
+              <div class="stat-label" id="card-label-2">Média Waves Defendidas</div>
+              <div class="stat-value" id="card-val-2">--</div>
+              <div class="stat-diff" id="card-diff-2"></div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Média Base HP</div>
-              <div class="stat-value" id="stat-hp">0.0</div>
-              <div class="stat-diff" id="diff-hp"></div>
+              <div class="stat-label" id="card-label-3">Média Base HP Restante</div>
+              <div class="stat-value" id="card-val-3">--</div>
+              <div class="stat-diff" id="card-diff-3"></div>
             </div>
             <div class="stat-card">
-              <div class="stat-label">Torres Construídas</div>
-              <div class="stat-value" id="stat-towers">0.0</div>
-              <div class="stat-diff" id="diff-towers"></div>
+              <div class="stat-label" id="card-label-4">Torres Construídas</div>
+              <div class="stat-value" id="card-val-4">--</div>
+              <div class="stat-diff" id="card-diff-4"></div>
             </div>
           </div>
 
-          <!-- TABS -->
-          <div class="tabs">
-            <button class="tab-btn active" data-tab="tab-graphs">Gráficos de Onda e Torre</button>
-            <button class="tab-btn" data-tab="tab-recs">Recomendações da IA</button>
-          </div>
-
-          <!-- TAB CONTENT: GRAPHS -->
-          <div class="tab-content active" id="tab-graphs">
-            <div class="charts-grid">
-              <div class="chart-container">
-                <div class="chart-title">Sobrevivência por Wave (Ideal: 20/20)</div>
-                <canvas id="chart-survival"></canvas>
-              </div>
-              <div class="chart-container">
-                <div class="chart-title">Eficácia das Torres (Dano Total)</div>
-                <canvas id="chart-towers"></canvas>
-              </div>
+          <!-- Charts -->
+          <div class="charts-grid">
+            <div class="chart-container">
+              <div class="chart-title" id="chart-title-1">Survival Rate por Wave</div>
+              <canvas id="chart-canvas-1"></canvas>
+            </div>
+            <div class="chart-container">
+              <div class="chart-title" id="chart-title-2">Distribuição de Dano</div>
+              <canvas id="chart-canvas-2"></canvas>
             </div>
           </div>
 
-          <!-- TAB CONTENT: RECOMENDAÇÕES -->
-          <div class="tab-content" id="tab-recs">
+          <!-- Bottom Details (Recommendations and tables/weights) -->
+          <div class="bottom-reports-grid">
             <div class="alerts-container">
-              <div class="alerts-title">🚨 Alertas e Recomendações de Balanceamento</div>
+              <div class="alerts-title" id="recs-title">🚨 Alertas e Recomendações de Balanceamento</div>
               <ul class="alert-list" id="recs-list">
-                <!-- Recommendations will be populated here -->
+                <li class="alert-item">Nenhum dado carregado. Rode uma simulação no terminal.</li>
               </ul>
+            </div>
+
+            <!-- Dynamic element (Class Table or AI Weights) -->
+            <div id="dynamic-detail-panel">
+              <!-- Class performance table (rendered by JS) -->
+              <div class="table-container" id="class-table-container">
+                <div class="table-title">Performance por Combinação de Classes</div>
+                <table id="class-perf-table">
+                  <thead>
+                    <tr>
+                      <th>Dupla de Classes</th>
+                      <th>Partidas</th>
+                      <th>Taxa Vitória</th>
+                      <th>Avg Waves</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td colspan="4" style="text-align: center; color: var(--text-muted);">Aguardando dados...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- AI weights inspector (initially hidden, rendered by JS) -->
+              <div class="weights-panel" id="ai-weights-container" style="display: none;">
+                <div class="table-title">
+                  <span>Pesos da Política Campeã (IA)</span>
+                  <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="copyAiPolicyWeights()">Copiar Pesos</button>
+                </div>
+                <div class="weights-grid" id="ai-weights-grid">
+                  <!-- AI weights populated here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB CONTENT: VISUALIZER -->
+        <div class="tab-content" id="tab-content-visualizer">
+          <div class="visualizer-controls">
+            <div class="vis-control-left">
+              <span style="font-size: 0.9rem; font-weight: 600; color: #e2e8f0;">Fase do Mapa:</span>
+              <select class="vis-select" id="vis-stage-select" onchange="simulatorSelectStage(this.value)">
+                <option value="0">Stage 1 - Atrio Curto</option>
+                <option value="1">Stage 2 - Atrio Expandido</option>
+                <option value="2">Stage 3 - Dupla Nave (2 Caminhos)</option>
+                <option value="3">Stage 4 - Claustro Longo (2 Caminhos)</option>
+                <option value="4">Stage 5 - Convergencia Tripla (3 Caminhos)</option>
+              </select>
+            </div>
+            
+            <div class="vis-control-right">
+              <button class="btn btn-primary" id="btn-vis-play" onclick="simulatorTogglePlay()">Iniciar Partida</button>
+              <button class="btn btn-secondary" onclick="simulatorRestart()">Reiniciar</button>
+              <span style="border-left: 1px solid var(--border-color); height: 20px; margin: 0 4px;"></span>
+              <button class="btn btn-secondary btn-active" id="btn-speed-1" onclick="simulatorSetSpeed(1)">1x</button>
+              <button class="btn btn-secondary" id="btn-speed-2" onclick="simulatorSetSpeed(2)">2x</button>
+              <button class="btn btn-secondary" id="btn-speed-5" onclick="simulatorSetSpeed(5)">5x</button>
+              <button class="btn btn-secondary" id="btn-speed-10" onclick="simulatorSetSpeed(10)">10x</button>
+            </div>
+          </div>
+
+          <div class="visualizer-container">
+            <div class="canvas-column">
+              <!-- Canvas display -->
+              <div class="canvas-wrap">
+                <canvas id="vis-canvas" width="600" height="350"></canvas>
+              </div>
+
+              <!-- Build Toolbar -->
+              <div class="build-toolbar">
+                <button class="toolbar-btn active" data-tool="select" onclick="selectBuildTool('select')">
+                  <span class="tool-icon">🔍</span>
+                  <span class="tool-info">
+                    <span class="tool-name">Inspecionar / Melhorar</span>
+                    <span class="tool-cost">Custo: 80 CR</span>
+                  </span>
+                </button>
+                <button class="toolbar-btn" data-tool="vitrail-laser" onclick="selectBuildTool('vitrail-laser')">
+                  <span class="tool-icon" style="color: var(--color-yellow);">🟡</span>
+                  <span class="tool-info">
+                    <span class="tool-name">Vitrail Laser</span>
+                    <span class="tool-cost">Custo: 100 CR</span>
+                  </span>
+                </button>
+                <button class="toolbar-btn" data-tool="chant-chain" onclick="selectBuildTool('chant-chain')">
+                  <span class="tool-icon" style="color: var(--color-cyan);">🔵</span>
+                  <span class="tool-info">
+                    <span class="tool-name">Chant Chain</span>
+                    <span class="tool-cost">Custo: 130 CR</span>
+                  </span>
+                </button>
+                <button class="toolbar-btn" data-tool="nave-bell" onclick="selectBuildTool('nave-bell')">
+                  <span class="tool-icon" style="color: var(--color-purple);">🟣</span>
+                  <span class="tool-info">
+                    <span class="tool-name">Nave Bell</span>
+                    <span class="tool-cost">Custo: 150 CR</span>
+                  </span>
+                </button>
+                <button class="toolbar-btn" data-tool="sell" onclick="selectBuildTool('sell')">
+                  <span class="tool-icon" style="color: var(--color-magenta);">🗑️</span>
+                  <span class="tool-info">
+                    <span class="tool-name">Vender Torre</span>
+                    <span class="tool-cost">Refund: 75%</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Telemetry & Live scrolling logs -->
+            <div class="vis-sidebar">
+              <div class="vis-telemetry-grid">
+                <div class="telemetry-card telemetry-card-full">
+                  <div class="telemetry-label">Wave / Progresso</div>
+                  <div class="telemetry-val" id="vis-tele-wave" style="color: var(--color-purple);">0 / 20</div>
+                </div>
+                <div class="telemetry-card">
+                  <div class="telemetry-label">Vida da Base</div>
+                  <div class="telemetry-val telemetry-val-hp" id="vis-tele-hp">24 / 24</div>
+                </div>
+                <div class="telemetry-card">
+                  <div class="telemetry-label">Créditos</div>
+                  <div class="telemetry-val telemetry-val-credits" id="vis-tele-credits">150</div>
+                </div>
+                <div class="telemetry-card">
+                  <div class="telemetry-label">Inimigos</div>
+                  <div class="telemetry-val" id="vis-tele-enemies" style="color: var(--color-magenta);">0</div>
+                </div>
+                <div class="telemetry-card">
+                  <div class="telemetry-label">Torres IA</div>
+                  <div class="telemetry-val" id="vis-tele-towers" style="color: var(--color-cyan);">0</div>
+                </div>
+              </div>
+
+              <!-- Log scroller -->
+              <div class="vis-log-panel">
+                <div class="log-panel-title">Decisões do Bot & Ações da Partida</div>
+                <div class="log-scroller" id="vis-log-scroller">
+                  <div class="log-line system">Pronto para simular. Ajuste os sliders à esquerda para aplicar modificações de balanceamento nas torres e monstros.</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -673,7 +1272,23 @@
   </div>
 
   <script>
-    // Configurações atuais
+    // Hex colors for Canvas drawing (CSS variables cannot be resolved directly inside canvas)
+    const CANVAS_COLORS = {
+      cyan: '#00f0ff',
+      magenta: '#ff007f',
+      green: '#00ff66',
+      yellow: '#ffcc00',
+      purple: '#8b5cf6',
+      pink: '#ff007f',
+      blue: '#3b82f6',
+      orange: '#fbbf24',
+      bgDark: '#040814',
+      panelBg: 'rgba(15, 23, 42, 0.85)',
+      white: '#ffffff',
+      textMuted: '#94a3b8'
+    };
+
+    // State management
     let currentConfig = {
       enemyHpMultiplier: 1.0,
       startingCredits: 150,
@@ -686,11 +1301,19 @@
       }
     };
 
-    // Dados de teste carregados
-    let baselineData = null;
+    let reportType = 'balance'; // 'balance' or 'learning'
     let currentData = null;
+    let baselineData = null;
 
-    // Elementos de UI
+    let chart1Instance = null;
+    let chart2Instance = null;
+
+    // Polling setup
+    let pollTimerId = null;
+    let lastLoadedTimestamp = null;
+    let autoPollingEnabled = true;
+
+    // UI Slider Elements
     const sliders = {
       enemyHp: document.getElementById('slider-enemy-hp'),
       startCredits: document.getElementById('slider-start-credits'),
@@ -712,16 +1335,11 @@
     };
 
     const jsonPreview = document.getElementById('json-preview');
-    const dropzone = document.getElementById('dropzone');
-    const dashboardContent = document.getElementById('dashboard-content');
-    const comparisonBanner = document.getElementById('comparison-banner');
-    
-    // Gráficos Chart.js
-    let survivalChart = null;
-    let towersChart = null;
 
-    // Inicializar da localStorage
-    function initConfig() {
+    // -------------------------------------------------------------
+    // SLIDERS & STORAGE
+    // -------------------------------------------------------------
+    function initSliders() {
       const saved = localStorage.getItem('aegis-balance-overrides');
       if (saved) {
         try {
@@ -731,7 +1349,7 @@
             currentConfig.towerDamageMultipliers = { ...currentConfig.towerDamageMultipliers, ...parsed.towerDamageMultipliers };
           }
         } catch (e) {
-          console.error("Failed to parse config from localStorage:", e);
+          console.error("Failed to load config from localStorage:", e);
         }
       }
       updateUIFromConfig();
@@ -754,8 +1372,7 @@
       valueLabels.chant.textContent = (currentConfig.towerDamageMultipliers["chant-chain"] || 1.0).toFixed(2) + 'x';
       valueLabels.bell.textContent = (currentConfig.towerDamageMultipliers["nave-bell"] || 1.0).toFixed(2) + 'x';
 
-      const jsonStr = JSON.stringify(currentConfig, null, 2);
-      jsonPreview.textContent = jsonStr;
+      jsonPreview.textContent = JSON.stringify(currentConfig, null, 2);
     }
 
     function saveConfig() {
@@ -763,7 +1380,7 @@
       jsonPreview.textContent = JSON.stringify(currentConfig, null, 2);
     }
 
-    // Handlers para sliders
+    // Add slider event listeners
     sliders.enemyHp.addEventListener('input', (e) => {
       currentConfig.enemyHpMultiplier = parseFloat(e.target.value);
       updateUIFromConfig();
@@ -788,7 +1405,6 @@
       saveConfig();
     });
 
-    // Tower Damage Sliders
     document.querySelectorAll('.tower-slider').forEach(slider => {
       slider.addEventListener('input', (e) => {
         const id = e.target.dataset.id;
@@ -798,7 +1414,6 @@
       });
     });
 
-    // Reset button
     document.getElementById('btn-reset').addEventListener('click', () => {
       currentConfig = {
         enemyHpMultiplier: 1.0,
@@ -813,120 +1428,352 @@
       };
       updateUIFromConfig();
       saveConfig();
+      const statusBox = document.getElementById('local-status-box');
+      statusBox.textContent = `[${new Date().toLocaleTimeString()}] Sliders de balanço resetados para o padrão.`;
     });
 
-    // Copy JSON
-    document.getElementById('btn-copy').addEventListener('click', () => {
-      navigator.clipboard.writeText(JSON.stringify(currentConfig, null, 2));
-      alert("Configuração JSON copiada com sucesso para a área de transferência!");
+    document.getElementById('btn-save-to-game').addEventListener('click', () => {
+      saveConfig();
+      const statusBox = document.getElementById('local-status-box');
+      statusBox.textContent = `[${new Date().toLocaleTimeString()}] Configurações de balanço salvas localmente no navegador!`;
     });
 
-    // Download JSON
-    document.getElementById('btn-download').addEventListener('click', () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentConfig, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", "balance-overrides.json");
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    });
+    document.getElementById('btn-sim-local').addEventListener('click', async () => {
+      const statusBox = document.getElementById('local-status-box');
+      const simBtn = document.getElementById('btn-sim-local');
+      simBtn.disabled = true;
+      simBtn.textContent = "Simulando...";
+      
+      statusBox.textContent = `[${new Date().toLocaleTimeString()}] Iniciando 100 simulações locais...\n`;
 
-    // Dropzone logic
-    dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropzone.classList.add('dragover');
-    });
+      try {
+        if (!window.AegisAI || !window.AegisAI.runBrowserBatchSimulationsAsync) {
+          throw new Error("AegisAI não está completamente carregado. Aguarde um segundo e tente novamente.");
+        }
 
-    dropzone.addEventListener('dragleave', () => {
-      dropzone.classList.remove('dragover');
-    });
+        const results = await window.AegisAI.runBrowserBatchSimulationsAsync(100, currentConfig, (current, total, tempResults) => {
+          statusBox.textContent = `[${new Date().toLocaleTimeString()}] Progresso: ${current}/${total} partidas simuladas...`;
+          
+          if (reportType === 'balance') {
+            if (currentData) {
+              baselineData = currentData;
+            }
+            currentData = tempResults;
+            renderDashboard();
+          }
+        });
 
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleFile(files[0]);
+        localStorage.setItem('aegis-latest-sim-results', JSON.stringify(results));
+        
+        if (currentData) {
+          baselineData = currentData;
+        }
+        currentData = results;
+        lastLoadedTimestamp = results.timestamp;
+        renderDashboard();
+
+        statusBox.textContent = `[${new Date().toLocaleTimeString()}] Concluído! 100 partidas simuladas.\n`;
+        statusBox.textContent += `Win Rate: ${(results.winRate * 100).toFixed(1)}%\n`;
+        statusBox.textContent += `Waves Defendidas: ${results.averageWavesCleared.toFixed(1)}\n`;
+        statusBox.textContent += `Recomendações: ${results.recommendations.join(' | ') || 'Nenhuma'}`;
+      } catch (e) {
+        statusBox.textContent = `[Erro] ${e.message}`;
+        console.error(e);
+      } finally {
+        simBtn.disabled = false;
+        simBtn.textContent = "Simular 100 Partidas";
       }
     });
 
-    dropzone.addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json';
-      input.onchange = (e) => {
-        if (e.target.files.length > 0) {
-          handleFile(e.target.files[0]);
+    document.getElementById('btn-train-local').addEventListener('click', async () => {
+      const statusBox = document.getElementById('local-status-box');
+      const trainBtn = document.getElementById('btn-train-local');
+      trainBtn.disabled = true;
+      trainBtn.textContent = "Treinando...";
+      
+      statusBox.textContent = `[${new Date().toLocaleTimeString()}] Iniciando treinamento evolutivo local (3 gerações, população 8)...\n`;
+
+      try {
+        if (!window.AegisAI || !window.AegisAI.trainPolicyAsync) {
+          throw new Error("AegisAI não está completamente carregado. Aguarde um segundo e tente novamente.");
         }
-      };
-      input.click();
+
+        const report = await window.AegisAI.trainPolicyAsync({}, (status) => {
+          statusBox.textContent = `[${new Date().toLocaleTimeString()}] Geração ${status.generation + 1}/${status.totalGenerations} | Policy ${status.policyIndex + 1}/${status.totalPolicies} | Best Fitness: ${status.bestFitness.toFixed(0)}`;
+        });
+
+        localStorage.setItem('aegis-latest-train-report', JSON.stringify(report));
+        
+        if (reportType !== 'learning') {
+          switchReportType('learning');
+        }
+
+        currentData = report;
+        lastLoadedTimestamp = report.generatedAt;
+        renderDashboard();
+
+        statusBox.textContent = `[${new Date().toLocaleTimeString()}] Treinamento concluído!\n`;
+        statusBox.textContent += `Melhor Fitness: ${report.champion.fitness.toFixed(0)}\n`;
+        statusBox.textContent += `Win Rate do Campeão: ${(report.champion.winRate * 100).toFixed(0)}%\n`;
+        statusBox.textContent += `Novos pesos salvos no jogo.`;
+      } catch (e) {
+        statusBox.textContent = `[Erro] ${e.message}`;
+        console.error(e);
+      } finally {
+        trainBtn.disabled = false;
+        trainBtn.textContent = "Treinar IA Local (3 Gen)";
+      }
     });
 
-    function handleFile(file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const parsed = JSON.parse(e.target.result);
-          if (parsed.runs && parsed.winRate !== undefined) {
-            // Se já temos um teste carregado, colocamos ele como baseline antes de aceitar o novo
-            if (currentData) {
-              baselineData = currentData;
-              document.getElementById('comp-runs-label').textContent = `${baselineData.runs} runs (${baselineData.timestamp})`;
-              comparisonBanner.style.display = 'flex';
-            }
-            currentData = parsed;
-            renderDashboard();
-          } else {
-            alert("O arquivo JSON não parece ser um relatório válido gerado por batch-balance-test.mjs");
-          }
-        } catch (err) {
-          alert("Erro ao ler o arquivo JSON: " + err.message);
-        }
-      };
-      reader.readAsText(file);
+    // -------------------------------------------------------------
+    // AUTOMATIC POLLING SYSTEM
+    // -------------------------------------------------------------
+    function toggleAutoPoll(checked) {
+      autoPollingEnabled = checked;
+      if (autoPollingEnabled) {
+        startPolling();
+      } else {
+        stopPolling();
+      }
     }
 
-    // Renderizar Painel de Análise
+    function startPolling() {
+      stopPolling();
+      pollTimerId = setInterval(fetchLatestReport, 3000);
+      fetchLatestReport();
+    }
+
+    function stopPolling() {
+      if (pollTimerId) {
+        clearInterval(pollTimerId);
+        pollTimerId = null;
+      }
+    }
+
+    function forceReload() {
+      lastLoadedTimestamp = null;
+      fetchLatestReport(true);
+    }
+
+    async function fetchLatestReport(isManual = false) {
+      const indicator = document.getElementById('poll-indicator');
+      const statusText = document.getElementById('poll-status-text');
+
+      let localStorageKey = reportType === 'balance' ? 'aegis-latest-sim-results' : 'aegis-latest-train-report';
+      let savedLocalData = localStorage.getItem(localStorageKey);
+
+      let url = "";
+      if (reportType === 'balance') {
+        url = "/tools/latest-balance-results.json";
+      } else {
+        url = "/reports/learning/latest.json";
+      }
+
+      try {
+        const response = await fetch(`${url}?t=${Date.now()}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        
+        let newTimestamp = reportType === 'balance' ? data.timestamp : data.generatedAt;
+        
+        if (newTimestamp !== lastLoadedTimestamp) {
+          if (currentData) {
+            baselineData = currentData;
+          }
+          currentData = data;
+          lastLoadedTimestamp = newTimestamp;
+          
+          indicator.className = "status-dot active";
+          let dateStr = new Date(newTimestamp).toLocaleTimeString();
+          statusText.textContent = `Carregado do Servidor: ${dateStr}`;
+          
+          renderDashboard();
+        } else {
+          indicator.className = "status-dot active";
+          statusText.textContent = "Monitorando (Sem alterações)";
+        }
+      } catch (err) {
+        if (savedLocalData) {
+          try {
+            const data = JSON.parse(savedLocalData);
+            let newTimestamp = reportType === 'balance' ? data.timestamp : data.generatedAt;
+            if (newTimestamp !== lastLoadedTimestamp) {
+              if (currentData) {
+                baselineData = currentData;
+              }
+              currentData = data;
+              lastLoadedTimestamp = newTimestamp;
+              indicator.className = "status-dot active";
+              let dateStr = new Date(newTimestamp).toLocaleTimeString();
+              statusText.textContent = `Carregado Localmente: ${dateStr}`;
+              renderDashboard();
+            } else {
+              indicator.className = "status-dot active";
+              statusText.textContent = "Monitorando (Sem alterações)";
+            }
+          } catch (e) {
+            console.error("Failed to parse local report:", e);
+          }
+        } else {
+          indicator.className = "status-dot active";
+          if (reportType === 'balance') {
+            statusText.textContent = "Simulador pronto. Clique em 'Simular 100 Partidas'!";
+          } else {
+            statusText.textContent = "Treinamento pronto. Clique em 'Treinar IA Local'!";
+          }
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // TABS & TYPE SELECTION
+    // -------------------------------------------------------------
+    function switchMainTab(tab) {
+      document.getElementById('tab-btn-reports').classList.remove('active');
+      document.getElementById('tab-btn-visualizer').classList.remove('active');
+      document.getElementById('tab-content-reports').classList.remove('active');
+      document.getElementById('tab-content-visualizer').classList.remove('active');
+
+      if (tab === 'reports') {
+        document.getElementById('tab-btn-reports').classList.add('active');
+        document.getElementById('tab-content-reports').classList.add('active');
+        startPolling();
+        if (simPlaying) {
+          simulatorTogglePlay();
+        }
+      } else {
+        document.getElementById('tab-btn-visualizer').classList.add('active');
+        document.getElementById('tab-content-visualizer').classList.add('active');
+        stopPolling();
+        initSimulatorCanvas();
+      }
+    }
+
+    function switchReportType(type) {
+      document.getElementById('sub-btn-balance').classList.remove('active');
+      document.getElementById('sub-btn-learning').classList.remove('active');
+
+      if (type === 'balance') {
+        document.getElementById('sub-btn-balance').classList.add('active');
+        reportType = 'balance';
+      } else {
+        document.getElementById('sub-btn-learning').classList.add('active');
+        reportType = 'learning';
+      }
+
+      // Hide or show tables/weights
+      if (reportType === 'balance') {
+        document.getElementById('class-table-container').style.display = 'block';
+        document.getElementById('ai-weights-container').style.display = 'none';
+      } else {
+        document.getElementById('class-table-container').style.display = 'none';
+        document.getElementById('ai-weights-container').style.display = 'block';
+      }
+
+      lastLoadedTimestamp = null;
+      currentData = null;
+      baselineData = null;
+      fetchLatestReport();
+    }
+
+    // -------------------------------------------------------------
+    // RENDER REPORTS DASHBOARD
+    // -------------------------------------------------------------
     function renderDashboard() {
-      dropzone.style.display = 'none';
-      dashboardContent.style.display = 'block';
+      if (!currentData) return;
 
-      // Win Rate Card
-      const winRatePct = (currentData.winRate * 100).toFixed(1) + '%';
-      document.getElementById('stat-winrate').textContent = winRatePct;
-      
-      // Waves Card
-      document.getElementById('stat-waves').textContent = currentData.averageWavesCleared.toFixed(1);
+      if (reportType === 'balance') {
+        renderBalanceDashboard();
+      } else {
+        renderLearningDashboard();
+      }
+    }
 
-      // HP Card
-      document.getElementById('stat-hp').textContent = currentData.averageBaseHpRemaining.toFixed(0);
+    function renderBalanceDashboard() {
+      // Configure Labels
+      document.getElementById('card-label-1').textContent = "Taxa de Vitória (Win Rate)";
+      document.getElementById('card-label-2').textContent = "Média Waves Defendidas";
+      document.getElementById('card-label-3').textContent = "Média Base HP Restante";
+      document.getElementById('card-label-4').textContent = "Torres Construídas";
 
-      // Towers Card
-      document.getElementById('stat-towers').textContent = currentData.averageTowersBuilt.toFixed(1);
+      // Configure Values
+      document.getElementById('card-val-1').textContent = (currentData.winRate * 100).toFixed(1) + '%';
+      document.getElementById('card-val-2').textContent = currentData.averageWavesCleared.toFixed(1);
+      document.getElementById('card-val-3').textContent = currentData.averageBaseHpRemaining.toFixed(1);
+      document.getElementById('card-val-4').textContent = currentData.averageTowersBuilt.toFixed(1);
 
-      // Calcular diferenças se houver baseline
-      updateDiffLabel('diff-winrate', currentData.winRate, baselineData ? baselineData.winRate : null, true, true);
-      updateDiffLabel('diff-waves', currentData.averageWavesCleared, baselineData ? baselineData.averageWavesCleared : null, false);
-      updateDiffLabel('diff-hp', currentData.averageBaseHpRemaining, baselineData ? baselineData.averageBaseHpRemaining : null, false);
-      updateDiffLabel('diff-towers', currentData.averageTowersBuilt, baselineData ? baselineData.averageTowersBuilt : null, false, false, true);
+      // Configure Diffs (if baseline exists)
+      const hasBase = baselineData && baselineData.winRate !== undefined && baselineData.timestamp !== currentData.timestamp;
+      updateDiffLabel('card-diff-1', currentData.winRate, hasBase ? baselineData.winRate : null, true, false);
+      updateDiffLabel('card-diff-2', currentData.averageWavesCleared, hasBase ? baselineData.averageWavesCleared : null, false, false);
+      updateDiffLabel('card-diff-3', currentData.averageBaseHpRemaining, hasBase ? baselineData.averageBaseHpRemaining : null, false, false);
+      updateDiffLabel('card-diff-4', currentData.averageTowersBuilt, hasBase ? baselineData.averageTowersBuilt : null, false, false, true);
 
-      // Renderização de Gráficos
+      // Render Charts
+      document.getElementById('chart-title-1').textContent = "Taxa de Sobrevivência por Onda (Ideal: 20/20)";
+      document.getElementById('chart-title-2').textContent = "Eficácia das Torres (Dano Total)";
       renderSurvivalChart();
       renderTowersChart();
 
-      // Renderização das Recomendações
-      renderRecommendations();
+      // Render Recommendations
+      renderRecommendations(currentData.recommendations);
+
+      // Render Class Performance Table
+      renderClassPerfTable();
+    }
+
+    function renderLearningDashboard() {
+      // Configure Labels for AI Self-Learning
+      document.getElementById('card-label-1').textContent = "Champion Fitness";
+      document.getElementById('card-label-2').textContent = "Win Rate do Campeão";
+      document.getElementById('card-label-3').textContent = "Média Waves Defendidas";
+      document.getElementById('card-label-4').textContent = "Média Base HP";
+
+      const champion = currentData.champion;
+      if (!champion) return;
+
+      // Configure Values
+      document.getElementById('card-val-1').textContent = champion.fitness.toFixed(0);
+      document.getElementById('card-val-2').textContent = (champion.winRate * 100).toFixed(0) + '%';
+      document.getElementById('card-val-3').textContent = champion.averageWavesCleared.toFixed(1);
+      document.getElementById('card-val-4').textContent = champion.averageBaseHp ? champion.averageBaseHp.toFixed(1) : '--';
+
+      // Diff
+      const hasBase = currentData.baseline && currentData.baseline.fitness !== undefined;
+      updateDiffLabel('card-diff-1', champion.fitness, hasBase ? currentData.baseline.fitness : null, false, false);
+      updateDiffLabel('card-diff-2', champion.winRate, hasBase ? currentData.baseline.winRate : null, true, false);
+      updateDiffLabel('card-diff-3', champion.averageWavesCleared, hasBase ? currentData.baseline.averageWavesCleared : null, false, false);
+      updateDiffLabel('card-diff-4', champion.averageBaseHp || 0, hasBase ? currentData.baseline.averageBaseHp || 0 : null, false, false);
+
+      // Render Charts
+      document.getElementById('chart-title-1').textContent = "Evolução do Fitness sobre Gerações";
+      document.getElementById('chart-title-2').textContent = "Desempenho por Geração (Win Rate)";
+      renderAiFitnessProgressChart();
+      renderAiGenStatsChart();
+
+      // Recommendations
+      renderRecommendations(currentData.recommendations);
+
+      // Weights grid
+      renderAiWeightsGrid(champion.policy.weights);
     }
 
     function updateDiffLabel(elementId, currentValue, baselineValue, isPercent = false, invertBad = false, neutral = false) {
       const el = document.getElementById(elementId);
-      if (baselineValue === null) {
+      if (baselineValue === null || baselineValue === undefined) {
         el.textContent = '';
         return;
       }
 
       const diff = currentValue - baselineValue;
+      if (Math.abs(diff) < 0.0001) {
+        el.textContent = 'Sem alterações';
+        el.className = 'stat-diff';
+        return;
+      }
+
       let text = '';
       if (isPercent) {
         text = (diff >= 0 ? '+' : '') + (diff * 100).toFixed(1) + '%';
@@ -944,120 +1791,13 @@
       }
     }
 
-    // Gráfico de Sobrevivência por Wave
-    function renderSurvivalChart() {
-      const ctx = document.getElementById('chart-survival').getContext('2d');
-      
-      const labels = currentData.waves.map(w => w.name);
-      
-      // Calcular taxa de sobrevivência incremental para cada wave
-      const currentSurvival = currentData.waves.map(w => (w.clears / w.attempts) * 100);
-      let baselineSurvival = null;
-      if (baselineData && baselineData.waves) {
-        baselineSurvival = baselineData.waves.map(w => (w.clears / w.attempts) * 100);
-      }
-
-      if (survivalChart) {
-        survivalChart.destroy();
-      }
-
-      const datasets = [
-        {
-          label: 'Teste Atual',
-          data: currentSurvival,
-          borderColor: '#00f0ff',
-          backgroundColor: 'rgba(0, 240, 255, 0.1)',
-          fill: true,
-          tension: 0.1
-        }
-      ];
-
-      if (baselineSurvival) {
-        datasets.push({
-          label: 'Teste Anterior',
-          data: baselineSurvival,
-          borderColor: '#ff007f',
-          backgroundColor: 'rgba(255, 0, 127, 0.05)',
-          fill: true,
-          tension: 0.1
-        });
-      }
-
-      survivalChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              min: 0,
-              max: 100,
-              title: { display: true, text: '% Sobreviventes' }
-            }
-          }
-        }
-      });
-    }
-
-    // Gráfico de Eficácia das Torres (Dano)
-    function renderTowersChart() {
-      const ctx = document.getElementById('chart-towers').getContext('2d');
-
-      const towerIds = Object.keys(currentData.towers);
-      const labels = towerIds.map(id => id.replace('tower.', ''));
-      const currentDmg = towerIds.map(id => currentData.towers[id].damage);
-
-      let baselineDmg = null;
-      if (baselineData && baselineData.towers) {
-        baselineDmg = towerIds.map(id => baselineData.towers[id] ? baselineData.towers[id].damage : 0);
-      }
-
-      if (towersChart) {
-        towersChart.destroy();
-      }
-
-      const datasets = [
-        {
-          label: 'Teste Atual (Dano)',
-          data: currentDmg,
-          backgroundColor: 'rgba(0, 240, 255, 0.6)',
-          borderWidth: 1
-        }
-      ];
-
-      if (baselineDmg) {
-        datasets.push({
-          label: 'Teste Anterior (Dano)',
-          data: baselineDmg,
-          backgroundColor: 'rgba(255, 0, 127, 0.4)',
-          borderWidth: 1
-        });
-      }
-
-      towersChart = new Chart(ctx, {
-        type: 'bar',
-        data: { labels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: { display: true, text: 'Dano Acumulado' }
-            }
-          }
-        }
-      });
-    }
-
-    // Recomendações
-    function renderRecommendations() {
+    // Recommendations List
+    function renderRecommendations(recs) {
       const list = document.getElementById('recs-list');
       list.innerHTML = '';
 
-      if (currentData.recommendations && currentData.recommendations.length > 0) {
-        currentData.recommendations.forEach(rec => {
+      if (recs && recs.length > 0) {
+        recs.forEach(rec => {
           const li = document.createElement('li');
           li.className = 'alert-item';
           li.textContent = rec;
@@ -1066,31 +1806,1903 @@
       } else {
         const li = document.createElement('li');
         li.className = 'alert-item';
-        li.textContent = 'A simulação completou perfeitamente. Nenhum problema de balanceamento detectado!';
+        li.textContent = 'O balanceamento do jogo está saudável. Nenhum comportamento discrepante detectado!';
         list.appendChild(li);
       }
     }
 
-    // Tab Switching
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    // Class performance table
+    function renderClassPerfTable() {
+      const tbody = document.querySelector('#class-perf-table tbody');
+      tbody.innerHTML = '';
 
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
+      if (!currentData.classPairs) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Sem dados por classe.</td></tr>';
+        return;
+      }
+
+      const sortedPairs = Object.entries(currentData.classPairs).sort((a, b) => b[1].winRate - a[1].winRate);
+
+      if (sortedPairs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Sem combinações registradas.</td></tr>';
+        return;
+      }
+
+      sortedPairs.forEach(([pairName, stats]) => {
+        const tr = document.createElement('tr');
+
+        const cleanName = pairName
+          .split(' + ')
+          .map(cls => cls.replace('christian-', '').replace('islamic-', '').replace('hindu-', '').replace('buddhist-', '').replace('shinto-', '').replace('umbanda-', '').replace('candomble-', ''))
+          .join(' + ');
+
+        tr.innerHTML = `
+          <td><strong>${cleanName}</strong></td>
+          <td>${stats.attempts}</td>
+          <td class="td-highlight" style="color: ${stats.winRate > 0.8 ? 'var(--color-green)' : stats.winRate < 0.3 ? 'var(--color-magenta)' : '#e2e8f0'}">${(stats.winRate * 100).toFixed(0)}%</td>
+          <td>${stats.averageWavesCleared.toFixed(1)}</td>
+        `;
+        tbody.appendChild(tr);
       });
+    }
+
+    // AI weights visualizer
+    function renderAiWeightsGrid(weights) {
+      const container = document.getElementById('ai-weights-grid');
+      container.innerHTML = '';
+
+      if (!weights) return;
+
+      const formatAndAppend = (key, value, maxVal = 3.0) => {
+        const card = document.createElement('div');
+        card.className = 'weight-card';
+        
+        let valFloat = typeof value === 'number' ? value : 1.0;
+        let pct = Math.min(100, Math.max(0, (valFloat / maxVal) * 100));
+
+        card.innerHTML = `
+          <div class="weight-card-header">
+            <span class="weight-name">${key}</span>
+            <span class="weight-val">${valFloat.toFixed(2)}</span>
+          </div>
+          <div class="weight-bar-bg">
+            <div class="weight-bar-fill" style="width: ${pct}%"></div>
+          </div>
+        `;
+        container.appendChild(card);
+      };
+
+      // Add major weights
+      const importantWeights = [
+        'spendPressure', 'desiredTowersBase', 'desiredTowersPerWave', 
+        'upgradeUrgency', 'carryUpgradeBias', 'duplicatePenalty', 
+        'coverageBias', 'buildNearPathBias', 'buildSpacingBias', 'buildChokeBias'
+      ];
+
+      importantWeights.forEach(k => {
+        if (weights[k] !== undefined) {
+          formatAndAppend(k, weights[k], k.includes('desired') ? 10.0 : 3.0);
+        }
+      });
+
+      // Highlight tower biases
+      if (weights.effectBias) {
+        Object.entries(weights.effectBias).forEach(([effect, val]) => {
+          formatAndAppend(`bias:effect:${effect}`, val, 2.5);
+        });
+      }
+
+      // Enemy threat bias
+      if (weights.enemyBias) {
+        Object.entries(weights.enemyBias).forEach(([enemy, val]) => {
+          formatAndAppend(`bias:enemy:${enemy}`, val, 2.5);
+        });
+      }
+    }
+
+    function copyAiPolicyWeights() {
+      if (currentData && currentData.champion && currentData.champion.policy) {
+        navigator.clipboard.writeText(JSON.stringify(currentData.champion.policy, null, 2));
+        alert("Pesos da política do campeão copiados com sucesso!");
+      }
+    }
+
+    // -------------------------------------------------------------
+    // GRAPHS (CHART.JS)
+    // -------------------------------------------------------------
+    function renderSurvivalChart() {
+      const ctx = document.getElementById('chart-canvas-1').getContext('2d');
+      if (chart1Instance) chart1Instance.destroy();
+
+      const labels = currentData.waves.map(w => w.name);
+      const currentSurvival = currentData.waves.map(w => (w.attempts > 0 ? (w.clears / w.attempts) * 100 : 0));
+      
+      const datasets = [
+        {
+          label: 'Simulação Atual',
+          data: currentSurvival,
+          borderColor: '#00f0ff',
+          backgroundColor: 'rgba(0, 240, 255, 0.08)',
+          fill: true,
+          tension: 0.15,
+          borderWidth: 2
+        }
+      ];
+
+      if (baselineData && baselineData.waves && baselineData.timestamp !== currentData.timestamp) {
+        const baselineSurvival = baselineData.waves.map(w => (w.attempts > 0 ? (w.clears / w.attempts) * 100 : 0));
+        datasets.push({
+          label: 'Comparação Anterior',
+          data: baselineSurvival,
+          borderColor: '#ff007f',
+          backgroundColor: 'rgba(255, 0, 127, 0.03)',
+          fill: true,
+          tension: 0.15,
+          borderWidth: 1.5
+        });
+      }
+
+      chart1Instance = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { min: 0, max: 100, title: { display: true, text: '% Sobrevivência', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.03)' } },
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } }
+        }
+      });
+    }
+
+    function renderTowersChart() {
+      const ctx = document.getElementById('chart-canvas-2').getContext('2d');
+      if (chart2Instance) chart2Instance.destroy();
+
+      const towerKeys = Object.keys(currentData.towers || {});
+      const labels = towerKeys.map(k => k.replace('tower.', ''));
+      const damageValues = towerKeys.map(k => currentData.towers[k].damage);
+
+      const datasets = [
+        {
+          label: 'Dano Causado (Atual)',
+          data: damageValues,
+          backgroundColor: 'rgba(0, 240, 255, 0.65)',
+          borderColor: 'rgba(0, 240, 255, 0.85)',
+          borderWidth: 1,
+          borderRadius: 6
+        }
+      ];
+
+      if (baselineData && baselineData.towers && baselineData.timestamp !== currentData.timestamp) {
+        const baselineDmg = towerKeys.map(k => baselineData.towers[k] ? baselineData.towers[k].damage : 0);
+        datasets.push({
+          label: 'Dano Causado (Anterior)',
+          data: baselineDmg,
+          backgroundColor: 'rgba(255, 0, 127, 0.45)',
+          borderColor: 'rgba(255, 0, 127, 0.65)',
+          borderWidth: 1,
+          borderRadius: 6
+        });
+      }
+
+      chart2Instance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: 'Dano Total', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.03)' } },
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } }
+        }
+      });
+    }
+
+    // AI Charts
+    function renderAiFitnessProgressChart() {
+      const ctx = document.getElementById('chart-canvas-1').getContext('2d');
+      if (chart1Instance) chart1Instance.destroy();
+
+      const gens = currentData.generations || [];
+      const labels = gens.map(g => `G${g.generation}`);
+      const bestFitness = gens.map(g => g.bestFitness);
+      const avgFitness = gens.map(g => g.averageFitness);
+
+      chart1Instance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Melhor Fitness',
+              data: bestFitness,
+              borderColor: '#00f0ff',
+              backgroundColor: 'rgba(0, 240, 255, 0.1)',
+              fill: false,
+              tension: 0.1,
+              borderWidth: 2
+            },
+            {
+              label: 'Média da Geração',
+              data: avgFitness,
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139, 92, 246, 0.05)',
+              fill: false,
+              tension: 0.1,
+              borderWidth: 1.5,
+              borderDash: [5, 5]
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { title: { display: true, text: 'Pontuação de Fitness', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.03)' } },
+            x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } }
+        }
+      });
+    }
+
+    function renderAiGenStatsChart() {
+      const ctx = document.getElementById('chart-canvas-2').getContext('2d');
+      if (chart2Instance) chart2Instance.destroy();
+
+      const gens = currentData.generations || [];
+      const labels = gens.map(g => `G${g.generation}`);
+      const winRate = gens.map(g => g.bestWinRate * 100);
+      const avgWaves = gens.map(g => g.bestAverageWaves);
+
+      chart2Instance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Média Waves do Campeão',
+              data: avgWaves,
+              backgroundColor: 'rgba(139, 92, 246, 0.5)',
+              borderColor: '#8b5cf6',
+              borderWidth: 1,
+              yAxisID: 'yWaves'
+            },
+            {
+              label: 'Win Rate do Campeão (%)',
+              data: winRate,
+              type: 'line',
+              borderColor: '#00f0ff',
+              borderWidth: 2.5,
+              fill: false,
+              yAxisID: 'yWinRate'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            yWaves: {
+              type: 'linear',
+              position: 'left',
+              min: 0,
+              max: 20,
+              title: { display: true, text: 'Waves Defendidas (Max 20)', color: '#94a3b8' },
+              ticks: { color: '#94a3b8' },
+              grid: { color: 'rgba(255, 255, 255, 0.03)' }
+            },
+            yWinRate: {
+              type: 'linear',
+              position: 'right',
+              min: 0,
+              max: 100,
+              title: { display: true, text: 'Taxa Vitória %', color: '#94a3b8' },
+              ticks: { color: '#94a3b8' },
+              grid: { display: false }
+            },
+            x: { ticks: { color: '#94a3b8' } }
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } }
+        }
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 2D INTERACTIVE TOWER DEFENSE SIMULATOR
+    // -------------------------------------------------------------
+    const MAP_STAGES = [
+      {
+        id: "stage-01",
+        name: "Atrio Curto",
+        columns: 14,
+        rows: 9,
+        baseHp: 24,
+        paths: [
+          [[0,4], [1,4], [2,4], [3,4], [4,4], [4,3], [4,2], [5,2], [6,2], [7,2], [7,3], [7,4], [8,4], [9,4], [10,4], [10,5], [10,6], [11,6], [12,6], [13,6]]
+        ]
+      },
+      {
+        id: "stage-02",
+        name: "Atrio Expandido",
+        columns: 15,
+        rows: 9,
+        baseHp: 24,
+        paths: [
+          [[0,4], [1,4], [2,4], [3,4], [4,4], [4,3], [4,2], [5,2], [6,2], [7,2], [8,2], [8,3], [8,4], [9,4], [10,4], [11,4], [11,5], [11,6], [12,6], [13,6], [14,6]]
+        ]
+      },
+      {
+        id: "stage-03",
+        name: "Dupla Nave",
+        columns: 16,
+        rows: 9,
+        baseHp: 24,
+        paths: [
+          [[0,4], [1,4], [2,4], [3,4], [4,4], [4,3], [4,2], [5,2], [6,2], [7,2], [8,2], [9,2], [9,3], [9,4], [10,4], [11,4], [12,4], [12,5], [12,6], [13,6], [14,6], [15,6]],
+          [[0,1], [1,1], [2,1], [2,2], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [8,3], [9,3], [10,3], [11,3], [12,3], [13,3], [14,4], [15,5], [15,6]]
+        ]
+      },
+      {
+        id: "stage-04",
+        name: "Claustro Longo",
+        columns: 17,
+        rows: 10,
+        baseHp: 24,
+        paths: [
+          [[0,4], [1,4], [2,4], [3,4], [4,4], [4,3], [4,2], [5,2], [6,2], [7,2], [8,2], [9,2], [10,2], [10,3], [10,4], [11,4], [12,4], [13,4], [13,5], [13,6], [14,6], [15,6], [16,6]],
+          [[0,1], [1,1], [2,1], [2,2], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [8,3], [9,3], [10,3], [11,3], [12,3], [13,3], [14,4], [15,5], [16,6]]
+        ]
+      },
+      {
+        id: "stage-05",
+        name: "Convergencia Tripla",
+        columns: 18,
+        rows: 10,
+        baseHp: 24,
+        paths: [
+          [[0,4], [1,4], [2,4], [3,4], [4,4], [4,3], [4,2], [5,2], [6,2], [7,2], [8,2], [9,2], [10,2], [11,2], [11,3], [11,4], [12,4], [13,4], [14,4], [14,5], [14,6], [15,6], [16,6], [17,6]],
+          [[0,1], [1,1], [2,1], [2,2], [2,3], [3,3], [4,3], [5,3], [6,3], [7,3], [8,3], [9,3], [10,3], [11,3], [12,3], [13,3], [14,4], [15,5], [16,6], [17,6]],
+          [[0,8], [1,8], [2,8], [3,8], [4,8], [5,8], [6,8], [7,7], [8,7], [9,7], [10,7], [11,7], [12,7], [13,7], [14,7], [15,7], [16,6], [17,6]]
+        ]
+      }
+    ];
+
+    // Simulator runtime variables
+    let simCanvas = null;
+    let simCtx = null;
+    let simStageIndex = 0;
+    let simPlaying = false;
+    let simSpeed = 1;
+    let simLoopId = null;
+    let simPlayingBeforeHide = false;
+
+    let simState = {
+      baseHp: 24,
+      credits: 150,
+      wave: 1,
+      waveActive: false,
+      enemiesSpawnsLeft: 0,
+      enemiesSpawnTimer: 0,
+      enemies: [],
+      towers: [],
+      effects: [],
+      log: [],
+      tickCounter: 0,
+      lastBotDecisionTick: 0,
+      particles: [],
+      floatingTexts: [],
+      baseDmgFlash: 0,
+      waveDelayTimer: 60,
+      accumulatedLeaks: { runner: 0, swarm: 0, shield: 0 }
+    };
+
+    const towerPrices = {
+      "vitrail-laser": 100,
+      "chant-chain": 130,
+      "nave-bell": 150
+    };
+
+    let activeBuildTool = 'select';
+    let hoveredTower = null;
+    let hoveredCell = null;
+    let mousePos = { x: 0, y: 0 };
+
+    function selectBuildTool(tool) {
+      activeBuildTool = tool;
+      document.querySelectorAll('.toolbar-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tool === tool) {
+          btn.classList.add('active');
+        }
+      });
+    }
+
+    function flushAccumulatedLeaks() {
+      if (!simState.accumulatedLeaks) return;
+      const counts = [];
+      let totalDmg = 0;
+      for (const [type, count] of Object.entries(simState.accumulatedLeaks)) {
+        if (count > 0) {
+          counts.push(`${count}x ${type.toUpperCase()}`);
+          totalDmg += count;
+        }
+      }
+      if (counts.length > 0) {
+        addSimLog(`Vazamento: ${counts.join(', ')} romperam as defesas! Dano total: -${totalDmg}. HP Base: ${simState.baseHp}/24`, 'enemy');
+        // Reset counts
+        simState.accumulatedLeaks = { runner: 0, swarm: 0, shield: 0 };
+      }
+    }
+
+    function initCanvasInteractions() {
+      if (!simCanvas) return;
+      simCanvas.removeEventListener('mousemove', onCanvasMouseMove);
+      simCanvas.removeEventListener('mouseleave', onCanvasMouseLeave);
+      simCanvas.removeEventListener('click', onCanvasClick);
+      
+      simCanvas.addEventListener('mousemove', onCanvasMouseMove);
+      simCanvas.addEventListener('mouseleave', onCanvasMouseLeave);
+      simCanvas.addEventListener('click', onCanvasClick);
+    }
+
+    function onCanvasMouseMove(e) {
+      if (!simCanvas) return;
+      const rect = simCanvas.getBoundingClientRect();
+      const scaleX = simCanvas.width / rect.width;
+      const scaleY = simCanvas.height / rect.height;
+      const mouseX = (e.clientX - rect.left) * scaleX;
+      const mouseY = (e.clientY - rect.top) * scaleY;
+      
+      mousePos.x = mouseX;
+      mousePos.y = mouseY;
+      
+      const stage = MAP_STAGES[simStageIndex];
+      const cols = stage.columns;
+      const rows = stage.rows;
+      const cellW = simCanvas.width / cols;
+      const cellH = simCanvas.height / rows;
+      
+      const col = Math.floor(mouseX / cellW);
+      const row = Math.floor(mouseY / cellH);
+      
+      if (col >= 0 && col < cols && row >= 0 && row < rows) {
+        hoveredCell = { col, row };
+      } else {
+        hoveredCell = null;
+      }
+      
+      // Find if hovering over any tower
+      hoveredTower = null;
+      for (const t of simState.towers) {
+        const dx = mouseX - t.x;
+        const dy = mouseY - t.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= 16) {
+          hoveredTower = t;
+          break;
+        }
+      }
+    }
+
+    function onCanvasMouseLeave() {
+      hoveredTower = null;
+      hoveredCell = null;
+    }
+
+    function onCanvasClick(e) {
+      if (!hoveredCell) return;
+      
+      const stage = MAP_STAGES[simStageIndex];
+      const cols = stage.columns;
+      const rows = stage.rows;
+      const cellW = simCanvas.width / cols;
+      const cellH = simCanvas.height / rows;
+      
+      // Find if clicking an existing tower
+      let clickedTower = null;
+      for (const t of simState.towers) {
+        const tc = Math.floor(t.x / cellW);
+        const tr = Math.floor(t.y / cellH);
+        if (tc === hoveredCell.col && tr === hoveredCell.row) {
+          clickedTower = t;
+          break;
+        }
+      }
+      
+      if (activeBuildTool === 'select') {
+        if (clickedTower) {
+          // Upgrade clicked tower if we have credits
+          if (clickedTower.level < 3) {
+            if (simState.credits >= 80) {
+              clickedTower.level++;
+              clickedTower.range += 15;
+              simState.credits -= 80;
+              spawnFloatingText(clickedTower.x, clickedTower.y, `UPGRADE L${clickedTower.level}`, '#7dd3fc');
+              let name = clickedTower.type === 'vitrail-laser' ? 'Vitrail' : clickedTower.type === 'chant-chain' ? 'Chant' : 'Bell';
+              addSimLog(`Jogador aprimorou Torre ${name} em (${hoveredCell.col}, ${hoveredCell.row}) para Nível ${clickedTower.level}`, 'system');
+            } else {
+              spawnFloatingText(clickedTower.x, clickedTower.y, `Sem Créditos!`, '#ef4444');
+            }
+          } else {
+            spawnFloatingText(clickedTower.x, clickedTower.y, `Nível Máximo!`, '#a855f7');
+          }
+        }
+        return;
+      }
+      
+      if (activeBuildTool === 'sell') {
+        if (clickedTower) {
+          const basePrice = towerPrices[clickedTower.type];
+          const totalCost = basePrice + (clickedTower.level - 1) * 80;
+          const refund = Math.round(totalCost * 0.75);
+          
+          simState.credits += refund;
+          spawnFloatingText(clickedTower.x, clickedTower.y, `+${refund} CR`, '#00ff66');
+          
+          let name = clickedTower.type === 'vitrail-laser' ? 'Vitrail' : clickedTower.type === 'chant-chain' ? 'Chant' : 'Bell';
+          addSimLog(`Jogador vendeu Torre ${name} de Nível ${clickedTower.level} em (${hoveredCell.col}, ${hoveredCell.row}) por ${refund} CR`, 'system');
+          
+          // Remove from towers array
+          const tIdx = simState.towers.indexOf(clickedTower);
+          if (tIdx !== -1) {
+            simState.towers.splice(tIdx, 1);
+          }
+          hoveredTower = null;
+        }
+        return;
+      }
+      
+      // Building mode (vitrail-laser, chant-chain, nave-bell)
+      if (clickedTower) {
+        spawnFloatingText((hoveredCell.col + 0.5) * cellW, (hoveredCell.row + 0.5) * cellH, "Ocupado!", '#ef4444');
+        return;
+      }
+      
+      // Check path
+      let onPath = false;
+      stage.paths.forEach(p => {
+        p.forEach(node => {
+          if (node[0] === hoveredCell.col && node[1] === hoveredCell.row) onPath = true;
+        });
+      });
+      if (onPath) {
+        spawnFloatingText((hoveredCell.col + 0.5) * cellW, (hoveredCell.row + 0.5) * cellH, "Caminho!", '#ef4444');
+        return;
+      }
+      
+      let price = towerPrices[activeBuildTool];
+      if (simState.credits >= price) {
+        let range = activeBuildTool === 'vitrail-laser' ? 120 : activeBuildTool === 'chant-chain' ? 100 : 80;
+        simState.towers.push({
+          id: `t-${simState.tickCounter}`,
+          type: activeBuildTool,
+          x: (hoveredCell.col + 0.5) * cellW,
+          y: (hoveredCell.row + 0.5) * cellH,
+          level: 1,
+          range,
+          cooldown: 0,
+          damageDealt: 0
+        });
+        simState.credits -= price;
+        let name = activeBuildTool === 'vitrail-laser' ? 'Vitrail' : activeBuildTool === 'chant-chain' ? 'Chant' : 'Bell';
+        let color = activeBuildTool === 'vitrail-laser' ? '#fbbf24' : activeBuildTool === 'chant-chain' ? '#00f0ff' : '#a855f7';
+        spawnFloatingText((hoveredCell.col + 0.5) * cellW, (hoveredCell.row + 0.5) * cellH, `+${name}`, color);
+        addSimLog(`Jogador construiu Torre ${name} em (${hoveredCell.col}, ${hoveredCell.row})`, 'system');
+      } else {
+        spawnFloatingText((hoveredCell.col + 0.5) * cellW, (hoveredCell.row + 0.5) * cellH, `Falta CR (${price})`, '#ef4444');
+      }
+    }
+
+    function initSimulatorCanvas() {
+      simCanvas = document.getElementById('vis-canvas');
+      simCtx = simCanvas.getContext('2d');
+      initCanvasInteractions();
+      if (simState.towers.length === 0 && simState.enemies.length === 0 && simState.tickCounter === 0) {
+        simulatorReset();
+      }
+      simulatorEnsurePlaying();
+    }
+
+    function simulatorReset() {
+      const stage = MAP_STAGES[simStageIndex];
+      simState.baseHp = stage.baseHp;
+      simState.credits = currentConfig.startingCredits;
+      simState.wave = 1;
+      simState.waveActive = false;
+      simState.enemiesSpawnsLeft = 0;
+      simState.enemiesSpawnTimer = 0;
+      simState.enemies = [];
+      simState.towers = [];
+      simState.effects = [];
+      simState.tickCounter = 0;
+      simState.lastBotDecisionTick = 0;
+      simState.log = [];
+      simState.particles = [];
+      simState.floatingTexts = [];
+      simState.baseDmgFlash = 0;
+      simState.waveDelayTimer = 60;
+      simState.accumulatedLeaks = { runner: 0, swarm: 0, shield: 0 };
+      _minorKillCounter = 0;
+      
+      addSimLog(`Partida reiniciada no mapa ${stage.name}. Créditos iniciais: ${simState.credits}`, 'system');
+      
+      updateSimTelemetry();
+      drawSimulator();
+    }
+
+    function simulatorTogglePlay() {
+      const playBtn = document.getElementById('btn-vis-play');
+      if (simPlaying) {
+        simPlaying = false;
+        playBtn.textContent = "Retomar";
+        playBtn.className = "btn btn-primary";
+        cancelAnimationFrame(simLoopId);
+      } else {
+        simPlaying = true;
+        playBtn.textContent = "Pausar";
+        playBtn.className = "btn btn-secondary";
+        simLoopId = requestAnimationFrame(simulatorLoop);
+      }
+    }
+
+    function simulatorEnsurePlaying() {
+      if (!simPlaying) {
+        simulatorTogglePlay();
+      }
+    }
+
+    function simulatorRestart() {
+      if (simPlaying) {
+        cancelAnimationFrame(simLoopId);
+        simPlaying = false;
+      }
+      simulatorReset();
+      simulatorEnsurePlaying();
+    }
+
+    function simulatorSelectStage(idx) {
+      simStageIndex = parseInt(idx);
+      simulatorRestart();
+    }
+
+    function spawnExplosion(x, y, color) {
+      const count = 12 + Math.floor(Math.random() * 9); // 12-20 particles
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.0 + Math.random() * 3.5;
+        simState.particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          color: color,
+          alpha: 1.0,
+          decay: 0.02 + Math.random() * 0.03,
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+
+    function spawnFloatingText(x, y, text, color) {
+      simState.floatingTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        color: color,
+        alpha: 1.0,
+        vy: -0.8 - Math.random() * 0.6,
+        life: 45
+      });
+    }
+
+    function simulatorSetSpeed(speed) {
+      simSpeed = speed;
+      document.getElementById('btn-speed-1').classList.remove('btn-active');
+      document.getElementById('btn-speed-2').classList.remove('btn-active');
+      document.getElementById('btn-speed-5').classList.remove('btn-active');
+      document.getElementById('btn-speed-10').classList.remove('btn-active');
+      document.getElementById(`btn-speed-${speed}`).classList.add('btn-active');
+    }
+
+    let _minorKillCounter = 0; // Throttle minor kill floating texts
+
+    function addSimLog(msg, type = 'system') {
+      const scroller = document.getElementById('vis-log-scroller');
+      if (!scroller) return;
+      
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      
+      let minutes = Math.floor(simState.tickCounter / 1800);
+      let seconds = Math.floor((simState.tickCounter % 1800) / 30);
+      let timeStamp = `[${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}]`;
+      
+      line.textContent = `${timeStamp} ${msg}`;
+      scroller.appendChild(line);
+      
+      // Limit to 40 elements in the DOM to keep the log compact and readable
+      while (scroller.childNodes.length > 40) {
+        scroller.removeChild(scroller.firstChild);
+      }
+      
+      scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    // MAIN TICKS
+    function updateVisualEffectsFrame() {
+      // Handle base damage vignette flash decay
+      if (simState.baseDmgFlash > 0) {
+        simState.baseDmgFlash--;
+      }
+
+      // Handle particles update
+      if (simState.particles) {
+        for (let i = simState.particles.length - 1; i >= 0; i--) {
+          const p = simState.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.alpha -= p.decay;
+          if (p.alpha <= 0) {
+            simState.particles.splice(i, 1);
+          }
+        }
+      }
+
+      // Handle floating combat text update
+      if (simState.floatingTexts) {
+        for (let i = simState.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = simState.floatingTexts[i];
+          ft.y += ft.vy;
+          ft.life--;
+          if (ft.life <= 0) {
+            simState.floatingTexts.splice(i, 1);
+          }
+        }
+      }
+
+      // Handle Effects duration
+      simState.effects = simState.effects.filter(eff => {
+        eff.elapsed++;
+        return eff.elapsed < eff.duration;
+      });
+    }
+
+    function simulatorLoop() {
+      if (!simPlaying) return;
+
+      // Run multiple ticks per frame based on speed selection
+      for (let i = 0; i < simSpeed; i++) {
+        tickSimulator();
+      }
+
+      // DRAW first, then age/remove visual effects so they render for at least 1 frame
+      drawSimulator();
+      updateVisualEffectsFrame();
+      updateSimTelemetry();
+
+      simLoopId = requestAnimationFrame(simulatorLoop);
+    }
+
+    function tickSimulator() {
+      simState.tickCounter++;
+
+      // Spawner logic
+      if (simState.waveActive) {
+        if (simState.enemiesSpawnsLeft > 0) {
+          simState.enemiesSpawnTimer--;
+          if (simState.enemiesSpawnTimer <= 0) {
+            spawnEnemy();
+            simState.enemiesSpawnsLeft--;
+            simState.enemiesSpawnTimer = Math.max(10, 45 - simState.wave * 1.5); // Spawns gets closer in later waves
+          }
+        } else if (simState.enemies.length === 0) {
+          // Wave Cleared
+          simState.waveActive = false;
+          flushAccumulatedLeaks();
+          let bonus = Math.round(50 * currentConfig.waveCompletionBonus * (1 + simState.wave * 0.1));
+          simState.credits += bonus;
+          addSimLog(`Wave ${simState.wave} defendida com sucesso! Bônus de Onda: +${bonus} CR.`, 'wave');
+          
+          if (simState.wave >= 20) {
+            addSimLog("VITÓRIA COMPLETA! Você defendeu todas as 20 hordas de monstros!", 'victory');
+            simPlaying = false;
+            document.getElementById('btn-vis-play').textContent = "Iniciar Partida";
+            document.getElementById('btn-vis-play').className = "btn btn-primary";
+            return;
+          }
+
+          simState.wave++;
+          simState.waveDelayTimer = 90; // 3 seconds delay
+        }
+      } else {
+        if (simState.waveDelayTimer > 0) {
+          simState.waveDelayTimer--;
+        } else {
+          startNextWave();
+        }
+      }
+
+      // Move Enemies
+      const stage = MAP_STAGES[simStageIndex];
+      const cols = stage.columns;
+      const rows = stage.rows;
+      const cellW = simCanvas.width / cols;
+      const cellH = simCanvas.height / rows;
+
+      for (let i = simState.enemies.length - 1; i >= 0; i--) {
+        const e = simState.enemies[i];
+        const pathCoords = stage.paths[e.pathIndex];
+        
+        // Find current target coordinates
+        const targetNodeIdx = e.nodeIdx + 1;
+        if (targetNodeIdx >= pathCoords.length) {
+          // Enemy reached base!
+          let baseDmg = e.type === 'boss' ? 5 : 1;
+          simState.baseHp = Math.max(0, simState.baseHp - baseDmg);
+          simState.baseDmgFlash = 15;
+          
+          const baseNode = pathCoords[pathCoords.length - 1];
+          const bx = (baseNode[0] + 0.5) * cellW;
+          const by = (baseNode[1] + 0.5) * cellH;
+          spawnFloatingText(bx, by, `-${baseDmg} HP`, '#ef4444');
+
+          if (e.type === 'boss' || e.type === 'tank') {
+            flushAccumulatedLeaks();
+            addSimLog(`Monstro ${e.type.toUpperCase()} rompeu as defesas! Dano na Base: -${baseDmg}. HP Base: ${simState.baseHp}/24`, 'enemy');
+          } else {
+            if (!simState.accumulatedLeaks) {
+              simState.accumulatedLeaks = { runner: 0, swarm: 0, shield: 0 };
+            }
+            simState.accumulatedLeaks[e.type] = (simState.accumulatedLeaks[e.type] || 0) + 1;
+          }
+
+          if (simState.baseHp <= 0) {
+            flushAccumulatedLeaks();
+            addSimLog("DERROTA! A catedral espiritual caiu diante dos monstros.", 'defeat');
+            simPlaying = false;
+            document.getElementById('btn-vis-play').textContent = "Iniciar Partida";
+            document.getElementById('btn-vis-play').className = "btn btn-primary";
+            simState.enemies.splice(i, 1);
+            return;
+          }
+          simState.enemies.splice(i, 1);
+          continue;
+        }
+
+        const currNode = pathCoords[e.nodeIdx];
+        const nextNode = pathCoords[targetNodeIdx];
+
+        const targetX = (nextNode[0] + 0.5) * cellW;
+        const targetY = (nextNode[1] + 0.5) * cellH;
+
+        const dx = targetX - e.x;
+        const dy = targetY - e.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist <= e.speed) {
+          e.x = targetX;
+          e.y = targetY;
+          e.nodeIdx++;
+        } else {
+          e.x += (dx / dist) * e.speed;
+          e.y += (dy / dist) * e.speed;
+          e.angle = Math.atan2(dy, dx);
+        }
+
+        // Append trail position
+        if (!e.trail) e.trail = [];
+        e.trail.push({ x: e.x, y: e.y });
+        if (e.trail.length > 6) {
+          e.trail.shift();
+        }
+      }
+
+      // Tower Firing Logic
+      for (const t of simState.towers) {
+        if (t.cooldown > 0) t.cooldown--;
+
+        // Get actual multipliers
+        const mult = currentConfig.towerDamageMultipliers[t.type] || 1.0;
+
+        // Targets within range
+        const inRangeEnemies = simState.enemies.filter(e => {
+          const dx = e.x - t.x;
+          const dy = e.y - t.y;
+          return Math.sqrt(dx * dx + dy * dy) <= t.range;
+        });
+
+        if (inRangeEnemies.length === 0) {
+          // If no targets, tower slowly rotates/idle spins
+          t.angle = (t.angle || 0) + 0.01;
+          continue;
+        }
+
+        // Sort by furthest along path
+        inRangeEnemies.sort((a, b) => {
+          if (a.nodeIdx !== b.nodeIdx) return b.nodeIdx - a.nodeIdx;
+          return b.speed - a.speed;
+        });
+
+        const mainTarget = inRangeEnemies[0];
+        
+        // Point turret at main target
+        t.angle = Math.atan2(mainTarget.y - t.y, mainTarget.x - t.x);
+
+        if (t.type === 'vitrail-laser') {
+          // continuous beam
+          let dmg = 0.6 * mult * (1 + t.level * 0.25);
+          mainTarget.hp -= dmg;
+          t.damageDealt = (t.damageDealt || 0) + dmg;
+          
+          simState.effects.push({
+            type: 'laser',
+            x1: t.x, y1: t.y,
+            x2: mainTarget.x, y2: mainTarget.y,
+            color: 'rgba(251, 191, 36, 0.8)',
+            duration: 3, elapsed: 0
+          });
+
+          // Spark particles at impact point
+          if (Math.random() < 0.3) {
+            simState.particles.push({
+              x: mainTarget.x,
+              y: mainTarget.y,
+              vx: (Math.random() - 0.5) * 3,
+              vy: (Math.random() - 0.5) * 3,
+              color: '#fbbf24',
+              alpha: 1.0,
+              decay: 0.05,
+              size: 1 + Math.random() * 2
+            });
+          }
+
+          checkEnemyDeath(mainTarget);
+        } else if (t.type === 'chant-chain') {
+          if (t.cooldown <= 0) {
+            let dmg = 20 * mult * (1 + t.level * 0.3);
+            mainTarget.hp -= dmg;
+            t.damageDealt = (t.damageDealt || 0) + dmg;
+            
+            // Jumps chain
+            let chainLinks = [t, mainTarget];
+            let lastChainEnd = mainTarget;
+            
+            let targetsLeft = Math.min(2, inRangeEnemies.length - 1);
+            for (let j = 1; j <= targetsLeft; j++) {
+              let nextChainTarget = inRangeEnemies[j];
+              nextChainTarget.hp -= dmg * 0.7; // Jump penalty
+              t.damageDealt += dmg * 0.7;
+              chainLinks.push(nextChainTarget);
+              checkEnemyDeath(nextChainTarget);
+            }
+
+            // chain lightning effect
+            for (let cIdx = 0; cIdx < chainLinks.length - 1; cIdx++) {
+              simState.effects.push({
+                type: 'lightning',
+                x1: chainLinks[cIdx].x, y1: chainLinks[cIdx].y,
+                x2: chainLinks[cIdx+1].x, y2: chainLinks[cIdx+1].y,
+                color: 'rgba(6, 182, 212, 0.95)',
+                duration: 8, elapsed: 0
+              });
+            }
+
+            t.cooldown = 35; // fire speed
+            checkEnemyDeath(mainTarget);
+          }
+        } else if (t.type === 'nave-bell') {
+          if (t.cooldown <= 0) {
+            let dmg = 35 * mult * (1 + t.level * 0.4);
+            
+            // shockwave hits ALL enemies in range
+            inRangeEnemies.forEach(e => {
+              e.hp -= dmg;
+              t.damageDealt = (t.damageDealt || 0) + dmg;
+              checkEnemyDeath(e);
+            });
+
+            // wave effect
+            simState.effects.push({
+              type: 'shockwave',
+              x: t.x, y: t.y,
+              radius: t.range,
+              color: 'rgba(168, 85, 247, 0.4)',
+              duration: 12, elapsed: 0
+            });
+
+            t.cooldown = 55; // slow reload
+          }
+        }
+      }
+
+      // Periodically flush accumulated small-enemy leaks every 150 ticks (~5s) during active waves
+      if (simState.waveActive && simState.tickCounter % 150 === 0) {
+        flushAccumulatedLeaks();
+      }
+
+      // Bot Turn (every 30 ticks = ~1 second)
+      if (simState.tickCounter - simState.lastBotDecisionTick >= 30) {
+        simState.lastBotDecisionTick = simState.tickCounter;
+        runBotDecision();
+      }
+    }
+
+    function checkEnemyDeath(enemy) {
+      if (enemy.hp <= 0) {
+        const idx = simState.enemies.indexOf(enemy);
+        if (idx !== -1) {
+          let isBig = enemy.type === 'boss' || enemy.type === 'tank';
+          let reward = Math.round((enemy.type === 'boss' ? 80 : enemy.type === 'tank' ? 25 : 12) * currentConfig.killRewardMultiplier);
+          simState.credits += reward;
+          
+          // Spawn explosion particles (always visual feedback)
+          spawnExplosion(enemy.x, enemy.y, enemy.color);
+          
+          // Throttle floating reward text for minor kills to reduce visual noise
+          if (isBig) {
+            spawnFloatingText(enemy.x, enemy.y, `+${reward} CR`, '#fbbf24');
+            addSimLog(`${enemy.type.toUpperCase()} eliminado! Recompensa: +${reward} CR.`, 'enemy');
+          } else {
+            _minorKillCounter++;
+            if (_minorKillCounter % 4 === 1) {
+              spawnFloatingText(enemy.x, enemy.y, `+${reward} CR`, '#fbbf24');
+            }
+          }
+          
+          simState.enemies.splice(idx, 1);
+        }
+      }
+    }
+
+    function spawnEnemy() {
+      const stage = MAP_STAGES[simStageIndex];
+      const pathsCount = stage.paths.length;
+      
+      // select path round robin
+      const pathIdx = simState.enemiesSpawnsLeft % pathsCount;
+      const path = stage.paths[pathIdx];
+
+      const cellW = simCanvas.width / stage.columns;
+      const cellH = simCanvas.height / stage.rows;
+      const startX = (path[0][0] + 0.5) * cellW;
+      const startY = (path[0][1] + 0.5) * cellH;
+
+      // Enemy composition based on Wave
+      let type = 'runner';
+      let hpScale = currentConfig.enemyHpMultiplier * (1 + simState.wave * 0.2);
+      
+      let rVal = Math.random();
+      if (simState.wave >= 18) {
+        // Late game heavy mixture
+        if (rVal < 0.15) type = 'boss';
+        else if (rVal < 0.5) type = 'tank';
+        else if (rVal < 0.75) type = 'shield';
+        else type = 'swarm';
+      } else if (simState.wave >= 12) {
+        if (rVal < 0.05) type = 'boss';
+        else if (rVal < 0.35) type = 'tank';
+        else if (rVal < 0.65) type = 'shield';
+        else type = 'runner';
+      } else if (simState.wave >= 6) {
+        if (rVal < 0.25) type = 'tank';
+        else if (rVal < 0.55) type = 'shield';
+        else if (rVal < 0.8) type = 'runner';
+        else type = 'swarm';
+      } else {
+        // early waves
+        if (rVal < 0.15) type = 'shield';
+        else if (rVal < 0.5) type = 'swarm';
+        else type = 'runner';
+      }
+
+      let speed = 2.0;
+      let hp = 70;
+      let size = 6;
+      let color = '#ef4444';
+
+      if (type === 'swarm') {
+        speed = 3.2; hp = 30; size = 4; color = '#f59e0b';
+      } else if (type === 'shield') {
+        speed = 1.6; hp = 130; size = 8; color = '#3b82f6';
+      } else if (type === 'tank') {
+        speed = 1.0; hp = 300; size = 11; color = '#10b981';
+      } else if (type === 'boss') {
+        speed = 0.65; hp = 1200; size = 15; color = '#8b5cf6';
+      }
+
+      hp *= hpScale;
+
+      let initialAngle = 0;
+      if (path.length > 1) {
+        let dx = path[1][0] - path[0][0];
+        let dy = path[1][1] - path[0][1];
+        initialAngle = Math.atan2(dy, dx);
+      }
+
+      simState.enemies.push({
+        id: `e-${simState.tickCounter}`,
+        type,
+        x: startX,
+        y: startY,
+        nodeIdx: 0,
+        pathIndex: pathIdx,
+        speed,
+        hp,
+        maxHp: hp,
+        size,
+        color,
+        angle: initialAngle,
+        trail: []
+      });
+    }
+
+    function startNextWave() {
+      if (simState.waveActive) return;
+
+      simState.waveActive = true;
+      simState.enemiesSpawnsLeft = Math.min(6 + simState.wave * 3, 40);
+      simState.enemiesSpawnTimer = 0; // immediate spawn
+      addSimLog(`Iniciando Wave ${simState.wave} / 20. Horda de ${simState.enemiesSpawnsLeft} monstros detectada!`, 'wave');
+    }
+
+    // BOT DECISION LOOP (IA)
+    function runBotDecision() {
+      // Determine if we want to place a tower or upgrade
+      // Let's retrieve policy values if champion learning is loaded, else use defaults.
+      let policy = {
+        desiredTowersBase: 4.2,
+        desiredTowersPerWave: 1.58,
+        spendPressure: 1.18,
+        upgradeUrgency: 0.44,
+        coverageBias: 1.32,
+        buildNearPathBias: 1.18,
+        buildSpacingBias: 0.64,
+        buildChokeBias: 1.14,
+        duplicatePenalty: 0.96
+      };
+
+      if (window.AegisAI && typeof window.AegisAI.getChampionPolicy === 'function') {
+        const activePolicy = window.AegisAI.getChampionPolicy();
+        if (activePolicy && activePolicy.weights) {
+          policy = { ...policy, ...activePolicy.weights };
+        }
+      } else if (currentData && currentData.champion && currentData.champion.policy) {
+        const cw = currentData.champion.policy.weights;
+        policy = { ...policy, ...cw };
+      }
+
+      const stage = MAP_STAGES[simStageIndex];
+      const cols = stage.columns;
+      const rows = stage.rows;
+      const cellW = simCanvas.width / cols;
+      const cellH = simCanvas.height / rows;
+
+      // Count active towers
+      const activeTowersCount = simState.towers.length;
+      const desiredTowers = Math.min(18, Math.floor(policy.desiredTowersBase + policy.desiredTowersPerWave * simState.wave));
+
+      // 1. Build Tower
+      if (activeTowersCount < desiredTowers) {
+        // Choose type
+        let type = 'vitrail-laser';
+        let rVal = Math.random();
+        
+        // Bot effect preference
+        if (rVal < 0.45) type = 'vitrail-laser';
+        else if (rVal < 0.8) type = 'chant-chain';
+        else type = 'nave-bell';
+
+        let price = towerPrices[type];
+        if (simState.credits >= price) {
+          // Find best location
+          let bestScore = -99999;
+          let bestCell = null;
+
+          // Check every cell
+          for (let col = 1; col < cols - 1; col++) {
+            for (let row = 1; row < rows - 1; row++) {
+              // 1. Can't build on paths
+              let onPath = false;
+              stage.paths.forEach(p => {
+                p.forEach(node => {
+                  if (node[0] === col && node[1] === row) onPath = true;
+                });
+              });
+              if (onPath) continue;
+
+              // 2. Can't build where another tower is
+              let occupied = false;
+              simState.towers.forEach(t => {
+                const tc = Math.floor(t.x / cellW);
+                const tr = Math.floor(t.y / cellH);
+                if (tc === col && tr === row) occupied = true;
+              });
+              if (occupied) continue;
+
+              // 3. Adjacency calculation
+              let minPathDist = 999;
+              let pathAdjacencies = 0;
+              
+              stage.paths.forEach(p => {
+                p.forEach(node => {
+                  let d = Math.sqrt((node[0] - col)**2 + (node[1] - row)**2);
+                  if (d < minPathDist) minPathDist = d;
+                  if (d <= 1.5) pathAdjacencies++;
+                });
+              });
+
+              // AI policy heuristic
+              let score = 0;
+              
+              // Spacing from path bias
+              if (minPathDist <= 1.5) score += policy.buildNearPathBias * 10;
+              else score -= (minPathDist - 1.5) * policy.buildSpacingBias * 5;
+
+              // Choke points
+              score += pathAdjacencies * policy.buildChokeBias * 2;
+
+              // Spacing from other towers
+              simState.towers.forEach(t => {
+                const tc = Math.floor(t.x / cellW);
+                const tr = Math.floor(t.y / cellH);
+                let d = Math.sqrt((tc - col)**2 + (tr - row)**2);
+                if (d < 2.0) score -= policy.buildSpacingBias * 12; // too close
+                if (d < 3.0 && t.type === type) score -= policy.duplicatePenalty * 8; // duplicate
+              });
+
+              if (score > bestScore) {
+                bestScore = score;
+                bestCell = { col, row };
+              }
+            }
+          }
+
+          if (bestCell && bestScore > 0) {
+            // Place tower
+            let range = type === 'vitrail-laser' ? 120 : type === 'chant-chain' ? 100 : 80;
+            simState.towers.push({
+              id: `t-${simState.tickCounter}`,
+              type,
+              x: (bestCell.col + 0.5) * cellW,
+              y: (bestCell.row + 0.5) * cellH,
+              level: 1,
+              range,
+              cooldown: 0,
+              damageDealt: 0
+            });
+            simState.credits -= price;
+            
+            let name = type === 'vitrail-laser' ? 'Vitrail' : type === 'chant-chain' ? 'Chant' : 'Bell';
+            let color = type === 'vitrail-laser' ? '#fbbf24' : type === 'chant-chain' ? '#00f0ff' : '#a855f7';
+            spawnFloatingText((bestCell.col + 0.5) * cellW, (bestCell.row + 0.5) * cellH, `+${name}`, color);
+            
+            addSimLog(`Bot construiu Torre ${name} em (${bestCell.col}, ${bestCell.row}) [Score: ${bestScore.toFixed(1)}]`, 'bot');
+            return; // Only one action per turn
+          }
+        }
+      }
+
+      // 2. Upgrade Tower
+      if (simState.towers.length > 0 && simState.credits >= 80) {
+        // Upgrade threshold
+        if (Math.random() < policy.upgradeUrgency || simState.towers.length >= desiredTowers) {
+          // Find lowest level tower to upgrade
+          let targetUpgrade = null;
+          let minLevel = 3;
+          
+          simState.towers.forEach(t => {
+            if (t.level < minLevel) {
+              minLevel = t.level;
+              targetUpgrade = t;
+            }
+          });
+
+          if (targetUpgrade) {
+            targetUpgrade.level++;
+            targetUpgrade.range += 15;
+            simState.credits -= 80;
+            const col = Math.floor(targetUpgrade.x / cellW);
+            const row = Math.floor(targetUpgrade.y / cellH);
+            let name = targetUpgrade.type === 'vitrail-laser' ? 'Vitrail' : targetUpgrade.type === 'chant-chain' ? 'Chant' : 'Bell';
+            spawnFloatingText(targetUpgrade.x, targetUpgrade.y, `UPGRADE L${targetUpgrade.level}`, '#7dd3fc');
+            addSimLog(`Bot aprimorou Torre ${name} em (${col}, ${row}) para Nível ${targetUpgrade.level}`, 'bot');
+          }
+        }
+      }
+    }
+
+    // DRAW SIMULATOR ON CANVAS
+    function drawSimulator() {
+      if (!simCanvas || !simCtx) return;
+
+      const stage = MAP_STAGES[simStageIndex];
+      const cols = stage.columns;
+      const rows = stage.rows;
+      const cellW = simCanvas.width / cols;
+      const cellH = simCanvas.height / rows;
+
+      // 1. Clear background
+      simCtx.fillStyle = CANVAS_COLORS.bgDark;
+      simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
+
+      // 2. Draw Grid Lines
+      simCtx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
+      simCtx.lineWidth = 1;
+      for (let c = 0; c <= cols; c++) {
+        simCtx.beginPath();
+        simCtx.moveTo(c * cellW, 0);
+        simCtx.lineTo(c * cellW, simCanvas.height);
+        simCtx.stroke();
+      }
+      for (let r = 0; r <= rows; r++) {
+        simCtx.beginPath();
+        simCtx.moveTo(0, r * cellH);
+        simCtx.lineTo(simCanvas.width, r * cellH);
+        simCtx.stroke();
+      }
+
+      // 3. Draw Path Grid Blocks & Path Connections
+      // Draw background track
+      simCtx.lineCap = 'round';
+      simCtx.lineJoin = 'round';
+      stage.paths.forEach(p => {
+        simCtx.strokeStyle = 'rgba(15, 23, 42, 0.55)';
+        simCtx.lineWidth = 22;
+        simCtx.beginPath();
+        p.forEach((node, idx) => {
+          let px = (node[0] + 0.5) * cellW;
+          let py = (node[1] + 0.5) * cellH;
+          if (idx === 0) simCtx.moveTo(px, py);
+          else simCtx.lineTo(px, py);
+        });
+        simCtx.stroke();
+
+        // Neon border glow
+        simCtx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+        simCtx.lineWidth = 18;
+        simCtx.stroke();
+
+        // Central neon track line
+        simCtx.strokeStyle = 'rgba(0, 240, 255, 0.7)';
+        simCtx.lineWidth = 2;
+        simCtx.stroke();
+
+        // Sliding dashes flow animation representing waves moving to base
+        simCtx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+        simCtx.lineWidth = 2.5;
+        simCtx.setLineDash([6, 18]);
+        simCtx.lineDashOffset = -simState.tickCounter * 0.45;
+        simCtx.stroke();
+        simCtx.setLineDash([]);
+      });
+
+      // Spawn Portal and Base landmarks
+      stage.paths.forEach(p => {
+        // Spawn Portal
+        let spawnNode = p[0];
+        let sx = (spawnNode[0] + 0.5) * cellW;
+        let sy = (spawnNode[1] + 0.5) * cellH;
+        let portalPulse = 14 + Math.sin(simState.tickCounter * 0.08) * 2;
+        
+        let portalGrad = simCtx.createRadialGradient(sx, sy, 2, sx, sy, portalPulse);
+        portalGrad.addColorStop(0, 'rgba(0, 240, 255, 0.95)');
+        portalGrad.addColorStop(0.5, 'rgba(0, 153, 255, 0.4)');
+        portalGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+        
+        simCtx.fillStyle = portalGrad;
+        simCtx.beginPath();
+        simCtx.arc(sx, sy, portalPulse, 0, Math.PI * 2);
+        simCtx.fill();
+
+        // Portal rotating visual ring
+        simCtx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        simCtx.lineWidth = 1.5;
+        simCtx.setLineDash([4, 4]);
+        simCtx.beginPath();
+        simCtx.arc(sx, sy, portalPulse, simState.tickCounter * 0.03, simState.tickCounter * 0.03 + Math.PI * 2);
+        simCtx.stroke();
+        simCtx.setLineDash([]);
+
+        // Base/Goal Landmark (Spiritual Cathedral Shrine)
+        let baseNode = p[p.length - 1];
+        let bx = (baseNode[0] + 0.5) * cellW;
+        let by = (baseNode[1] + 0.5) * cellH;
+        let basePulse = 18 + Math.sin(simState.tickCounter * 0.05) * 2.5;
+        
+        let baseGrad = simCtx.createRadialGradient(bx, by, 2, bx, by, basePulse);
+        baseGrad.addColorStop(0, 'rgba(255, 0, 127, 0.95)');
+        baseGrad.addColorStop(0.5, 'rgba(255, 0, 127, 0.35)');
+        baseGrad.addColorStop(1, 'rgba(255, 0, 127, 0)');
+        
+        simCtx.fillStyle = baseGrad;
+        simCtx.beginPath();
+        simCtx.arc(bx, by, basePulse, 0, Math.PI * 2);
+        simCtx.fill();
+
+        // Draw Cathedral Shrine Crystal shape
+        simCtx.fillStyle = CANVAS_COLORS.white;
+        simCtx.strokeStyle = CANVAS_COLORS.magenta;
+        simCtx.lineWidth = 2.5;
+        simCtx.beginPath();
+        // Draw a diamond shape
+        simCtx.moveTo(bx, by - 12);
+        simCtx.lineTo(bx + 8, by);
+        simCtx.lineTo(bx, by + 12);
+        simCtx.lineTo(bx - 8, by);
+        simCtx.closePath();
+        simCtx.fill();
+        simCtx.stroke();
+      });
+
+      // 4. Draw Towers
+      for (const t of simState.towers) {
+        let color = t.type === 'vitrail-laser' ? CANVAS_COLORS.yellow : t.type === 'chant-chain' ? CANVAS_COLORS.cyan : CANVAS_COLORS.purple;
+
+        // Draw Tower Range Outer Indicator on Hover
+        simCtx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
+        simCtx.lineWidth = 1;
+        simCtx.beginPath();
+        simCtx.arc(t.x, t.y, t.range, 0, Math.PI * 2);
+        simCtx.stroke();
+
+        // Tower Metallic Pedestal
+        simCtx.fillStyle = '#0f172a';
+        simCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        simCtx.lineWidth = 2;
+        simCtx.beginPath();
+        // Octagonal base
+        let points = 8;
+        for (let step = 0; step < points; step++) {
+          let stepAngle = (step / points) * Math.PI * 2;
+          let px = t.x + Math.cos(stepAngle) * 14;
+          let py = t.y + Math.sin(stepAngle) * 14;
+          if (step === 0) simCtx.moveTo(px, py);
+          else simCtx.lineTo(px, py);
+        }
+        simCtx.closePath();
+        simCtx.fill();
+        simCtx.stroke();
+
+        // Emitter glow shield
+        simCtx.strokeStyle = color;
+        simCtx.lineWidth = 2.5;
+        simCtx.beginPath();
+        simCtx.arc(t.x, t.y, 11, 0, Math.PI * 2);
+        simCtx.stroke();
+
+        // Draw Emitter barrel pointing in t.angle direction
+        let gunAngle = t.angle || 0;
+        let barrelLen = 14;
+        simCtx.strokeStyle = color;
+        simCtx.lineWidth = 3.5;
+        simCtx.beginPath();
+        simCtx.moveTo(t.x, t.y);
+        simCtx.lineTo(t.x + Math.cos(gunAngle) * barrelLen, t.y + Math.sin(gunAngle) * barrelLen);
+        simCtx.stroke();
+
+        // Inner Core with pulsing animation
+        let pulseSize = 4.5 + Math.sin(simState.tickCounter * 0.15) * 1.2;
+        simCtx.fillStyle = color;
+        simCtx.beginPath();
+        simCtx.arc(t.x, t.y, pulseSize, 0, Math.PI * 2);
+        simCtx.fill();
+
+        // Draw level star beads above tower
+        let lx = t.x;
+        let ly = t.y - 19;
+        simCtx.fillStyle = CANVAS_COLORS.orange;
+        for (let lv = 0; lv < t.level; lv++) {
+          let offset = (lv - (t.level - 1) / 2) * 6;
+          simCtx.beginPath();
+          simCtx.arc(lx + offset, ly, 2.2, 0, Math.PI * 2);
+          simCtx.fill();
+        }
+      }
+
+      // 5. Draw Enemies
+      for (const e of simState.enemies) {
+        // Draw trailing ghost/glow effect
+        if (e.trail && e.trail.length > 0) {
+          for (let tIdx = 0; tIdx < e.trail.length; tIdx++) {
+            const pt = e.trail[tIdx];
+            const alpha = ((tIdx + 1) / (e.trail.length + 1)) * 0.28;
+            simCtx.fillStyle = e.color;
+            simCtx.globalAlpha = alpha;
+            simCtx.beginPath();
+            simCtx.arc(pt.x, pt.y, e.size * 0.72, 0, Math.PI * 2);
+            simCtx.fill();
+          }
+          simCtx.globalAlpha = 1.0;
+        }
+
+        // Calculate heading angle
+        let angle = e.angle !== undefined ? e.angle : 0;
+
+        // Draw enemy vector shape based on type
+        simCtx.save();
+        simCtx.translate(e.x, e.y);
+        simCtx.rotate(angle);
+        
+        simCtx.fillStyle = e.color;
+        simCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        simCtx.lineWidth = 1.5;
+
+        if (e.type === 'runner') {
+          // Arrowhead vector shape
+          simCtx.beginPath();
+          simCtx.moveTo(e.size * 1.5, 0);
+          simCtx.lineTo(-e.size, -e.size);
+          simCtx.lineTo(-e.size / 2, 0);
+          simCtx.lineTo(-e.size, e.size);
+          simCtx.closePath();
+          simCtx.fill();
+          simCtx.stroke();
+        } else if (e.type === 'swarm') {
+          // Fast sleek diamond shape
+          simCtx.beginPath();
+          simCtx.moveTo(e.size * 1.3, 0);
+          simCtx.lineTo(0, -e.size * 0.8);
+          simCtx.lineTo(-e.size * 1.3, 0);
+          simCtx.lineTo(0, e.size * 0.8);
+          simCtx.closePath();
+          simCtx.fill();
+          simCtx.stroke();
+        } else if (e.type === 'shield') {
+          // Circle body
+          simCtx.beginPath();
+          simCtx.arc(0, 0, e.size, 0, Math.PI * 2);
+          simCtx.fill();
+          simCtx.stroke();
+          
+          // Rotating visual shield ring
+          simCtx.strokeStyle = 'rgba(0, 240, 255, 0.75)';
+          simCtx.lineWidth = 2.0;
+          simCtx.setLineDash([4, 4]);
+          simCtx.beginPath();
+          simCtx.arc(0, 0, e.size + 4, simState.tickCounter * 0.05, simState.tickCounter * 0.05 + Math.PI * 2);
+          simCtx.stroke();
+          simCtx.setLineDash([]);
+        } else if (e.type === 'tank') {
+          // Heavily armored octagon shape
+          simCtx.beginPath();
+          let points = 8;
+          for (let step = 0; step < points; step++) {
+            let stepAngle = (step / points) * Math.PI * 2;
+            let px = Math.cos(stepAngle) * e.size;
+            let py = Math.sin(stepAngle) * e.size;
+            if (step === 0) simCtx.moveTo(px, py);
+            else simCtx.lineTo(px, py);
+          }
+          simCtx.closePath();
+          simCtx.fill();
+          simCtx.stroke();
+        } else if (e.type === 'boss') {
+          // Large crowned star badge
+          simCtx.beginPath();
+          let points = 5;
+          let outerRadius = e.size;
+          let innerRadius = e.size * 0.5;
+          for (let step = 0; step < points * 2; step++) {
+            let r = step % 2 === 0 ? outerRadius : innerRadius;
+            let stepAngle = (step / (points * 2)) * Math.PI * 2;
+            let px = Math.cos(stepAngle) * r;
+            let py = Math.sin(stepAngle) * r;
+            if (step === 0) simCtx.moveTo(px, py);
+            else simCtx.lineTo(px, py);
+          }
+          simCtx.closePath();
+          simCtx.fill();
+          simCtx.stroke();
+        } else {
+          // Fallback circle
+          simCtx.beginPath();
+          simCtx.arc(0, 0, e.size, 0, Math.PI * 2);
+          simCtx.fill();
+          simCtx.stroke();
+        }
+        
+        simCtx.restore();
+
+        // Modern Sleek HP Bar
+        let barW = e.size * 2.6;
+        let barH = 3;
+        let bx = e.x - barW / 2;
+        let by = e.y - e.size - 7;
+
+        simCtx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        simCtx.fillRect(bx, by, barW, barH);
+
+        let hpPct = Math.max(0, e.hp / e.maxHp);
+        simCtx.fillStyle = hpPct > 0.5 ? CANVAS_COLORS.green : hpPct > 0.2 ? CANVAS_COLORS.yellow : CANVAS_COLORS.magenta;
+        simCtx.fillRect(bx, by, barW * hpPct, barH);
+      }
+
+      // Draw Particles (Sparks & Explosions)
+      if (simState.particles) {
+        for (const p of simState.particles) {
+          simCtx.fillStyle = p.color;
+          simCtx.globalAlpha = p.alpha;
+          simCtx.beginPath();
+          simCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          simCtx.fill();
+        }
+        simCtx.globalAlpha = 1.0;
+      }
+
+      // 6. Draw Visual Effects (Lasers, shockwaves, lightning) with alpha fade
+      for (const eff of simState.effects) {
+        let effAlpha = Math.max(0, 1.0 - (eff.elapsed / eff.duration));
+        simCtx.globalAlpha = effAlpha;
+
+        if (eff.type === 'laser') {
+          // Outer golden glow beam (wider, semi-transparent)
+          simCtx.strokeStyle = eff.color;
+          simCtx.lineWidth = 5 + (1 - effAlpha) * 2; // beam fattens slightly as it fades
+          simCtx.beginPath();
+          simCtx.moveTo(eff.x1, eff.y1);
+          simCtx.lineTo(eff.x2, eff.y2);
+          simCtx.stroke();
+
+          // Inner white-hot core
+          simCtx.strokeStyle = `rgba(255, 255, 255, ${effAlpha})`;
+          simCtx.lineWidth = 1.8;
+          simCtx.beginPath();
+          simCtx.moveTo(eff.x1, eff.y1);
+          simCtx.lineTo(eff.x2, eff.y2);
+          simCtx.stroke();
+
+          // Impact glow dot
+          simCtx.fillStyle = `rgba(255, 255, 255, ${effAlpha})`;
+          simCtx.beginPath();
+          simCtx.arc(eff.x2, eff.y2, 3.5 + (1 - effAlpha) * 2, 0, Math.PI * 2);
+          simCtx.fill();
+        } else if (eff.type === 'lightning') {
+          // Generate 3-segment jagged path for electric feel
+          let dx = eff.x2 - eff.x1;
+          let dy = eff.y2 - eff.y1;
+          let nx = -dy;
+          let ny = dx;
+          let nLen = Math.sqrt(nx * nx + ny * ny) || 1;
+          let offsetScale = 10;
+          
+          let p1x = eff.x1 + dx * 0.3 + (nx / nLen) * (Math.random() - 0.5) * offsetScale;
+          let p1y = eff.y1 + dy * 0.3 + (ny / nLen) * (Math.random() - 0.5) * offsetScale;
+          let p2x = eff.x1 + dx * 0.65 + (nx / nLen) * (Math.random() - 0.5) * offsetScale;
+          let p2y = eff.y1 + dy * 0.65 + (ny / nLen) * (Math.random() - 0.5) * offsetScale;
+
+          // Outer cyan glow
+          simCtx.strokeStyle = eff.color;
+          simCtx.lineWidth = 4;
+          simCtx.lineJoin = 'round';
+          simCtx.beginPath();
+          simCtx.moveTo(eff.x1, eff.y1);
+          simCtx.lineTo(p1x, p1y);
+          simCtx.lineTo(p2x, p2y);
+          simCtx.lineTo(eff.x2, eff.y2);
+          simCtx.stroke();
+
+          // Inner white core
+          simCtx.strokeStyle = `rgba(255, 255, 255, ${effAlpha * 0.9})`;
+          simCtx.lineWidth = 1.4;
+          simCtx.beginPath();
+          simCtx.moveTo(eff.x1, eff.y1);
+          simCtx.lineTo(p1x, p1y);
+          simCtx.lineTo(p2x, p2y);
+          simCtx.lineTo(eff.x2, eff.y2);
+          simCtx.stroke();
+        } else if (eff.type === 'shockwave') {
+          let progress = eff.elapsed / eff.duration;
+          let currRad = eff.radius * progress;
+          
+          // Outer ring
+          simCtx.strokeStyle = `rgba(168, 85, 247, ${effAlpha * 0.7})`;
+          simCtx.lineWidth = 3.0 - progress * 1.5;
+          simCtx.beginPath();
+          simCtx.arc(eff.x, eff.y, currRad, 0, Math.PI * 2);
+          simCtx.stroke();
+          
+          // Inner ring (delayed by a bit)
+          if (progress > 0.15) {
+            let innerRad = currRad * 0.6;
+            simCtx.strokeStyle = `rgba(196, 137, 255, ${effAlpha * 0.4})`;
+            simCtx.lineWidth = 1.5;
+            simCtx.beginPath();
+            simCtx.arc(eff.x, eff.y, innerRad, 0, Math.PI * 2);
+            simCtx.stroke();
+          }
+        }
+
+        simCtx.globalAlpha = 1.0;
+      }
+
+      // Draw Floating Combat Texts
+      if (simState.floatingTexts) {
+        simCtx.font = 'bold 12px "JetBrains Mono", monospace';
+        simCtx.textAlign = 'center';
+        for (const ft of simState.floatingTexts) {
+          simCtx.fillStyle = ft.color;
+          simCtx.globalAlpha = Math.min(1.0, ft.life / 15);
+          simCtx.fillText(ft.text, ft.x, ft.y);
+        }
+        simCtx.globalAlpha = 1.0;
+      }
+
+      // Draw Hover previews & tooltips
+      if (hoveredTower) {
+        // Draw range outline circle (dashed)
+        if (activeBuildTool === 'sell') {
+          simCtx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+        } else {
+          simCtx.strokeStyle = hoveredTower.type === 'vitrail-laser' ? 'rgba(251, 191, 36, 0.45)' : hoveredTower.type === 'chant-chain' ? 'rgba(6, 182, 212, 0.45)' : 'rgba(168, 85, 247, 0.45)';
+        }
+        simCtx.lineWidth = 1.5;
+        simCtx.setLineDash([5, 5]);
+        simCtx.beginPath();
+        simCtx.arc(hoveredTower.x, hoveredTower.y, hoveredTower.range, 0, Math.PI * 2);
+        simCtx.stroke();
+        simCtx.setLineDash([]);
+
+        // If sell mode, draw red hover ring around the tower
+        if (activeBuildTool === 'sell') {
+          simCtx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+          simCtx.lineWidth = 2;
+          simCtx.beginPath();
+          simCtx.arc(hoveredTower.x, hoveredTower.y, 16, 0, Math.PI * 2);
+          simCtx.stroke();
+        }
+
+        // Sleek glassmorphic tooltip card
+        const col = Math.floor(hoveredTower.x / cellW);
+        const row = Math.floor(hoveredTower.y / cellH);
+        let name = hoveredTower.type === 'vitrail-laser' ? 'Lente de Vitral' : hoveredTower.type === 'chant-chain' ? 'Coro de Ressonância' : 'Sino da Nave';
+        
+        simCtx.fillStyle = 'rgba(11, 18, 36, 0.9)';
+        if (activeBuildTool === 'sell') {
+          simCtx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+        } else {
+          simCtx.strokeStyle = hoveredTower.type === 'vitrail-laser' ? 'rgba(251, 191, 36, 0.3)' : hoveredTower.type === 'chant-chain' ? 'rgba(6, 182, 212, 0.3)' : 'rgba(168, 85, 247, 0.3)';
+        }
+        simCtx.lineWidth = 1.5;
+        
+        let tx = hoveredTower.x;
+        let ty = hoveredTower.y - 25;
+        let tw = 180;
+        let th = 60;
+        
+        // Prevent drawing outside canvas boundary
+        if (tx - tw/2 < 10) tx = tw/2 + 10;
+        if (tx + tw/2 > simCanvas.width - 10) tx = simCanvas.width - tw/2 - 10;
+        if (ty - th < 10) ty = hoveredTower.y + 40;
+        
+        simCtx.beginPath();
+        simCtx.roundRect(tx - tw/2, ty - th, tw, th, 10);
+        simCtx.fill();
+        simCtx.stroke();
+        
+        simCtx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+        simCtx.fillStyle = '#f8fafc';
+        simCtx.textAlign = 'center';
+        simCtx.fillText(name, tx, ty - th + 18);
+        
+        simCtx.font = '10px "Plus Jakarta Sans", sans-serif';
+        simCtx.fillStyle = '#94a3b8';
+        
+        if (activeBuildTool === 'sell') {
+          const basePrice = towerPrices[hoveredTower.type];
+          const totalCost = basePrice + (hoveredTower.level - 1) * 80;
+          const refund = Math.round(totalCost * 0.75);
+          simCtx.fillText(`Nível: ${hoveredTower.level} / 3 | Vender por:`, tx, ty - th + 33);
+          simCtx.fillStyle = '#00ff66';
+          simCtx.fillText(`+${refund} CR (Reembolso 75%)`, tx, ty - th + 47);
+        } else {
+          simCtx.fillText(`Nível: ${hoveredTower.level} / 3 | Alcance: ${hoveredTower.range}px`, tx, ty - th + 33);
+          simCtx.fillStyle = 'rgba(0, 240, 255, 0.9)';
+          simCtx.fillText(`Dano Total: ${Math.round(hoveredTower.damageDealt || 0)} HP`, tx, ty - th + 47);
+        }
+      } else if (hoveredCell) {
+        // Preview range outline for placing new tower
+        // First verify if cell is not a path node
+        let onPath = false;
+        stage.paths.forEach(p => {
+          p.forEach(node => {
+            if (node[0] === hoveredCell.col && node[1] === hoveredCell.row) onPath = true;
+          });
+        });
+        
+        let cellOccupied = false;
+        for (const t of simState.towers) {
+          const tc = Math.floor(t.x / cellW);
+          const tr = Math.floor(t.y / cellH);
+          if (tc === hoveredCell.col && tr === hoveredCell.row) {
+            cellOccupied = true;
+            break;
+          }
+        }
+        
+        if (!onPath && !cellOccupied) {
+          if (activeBuildTool === 'vitrail-laser' || activeBuildTool === 'chant-chain' || activeBuildTool === 'nave-bell') {
+            // Draw grid indicator highlight
+            let color = activeBuildTool === 'vitrail-laser' ? CANVAS_COLORS.yellow : activeBuildTool === 'chant-chain' ? CANVAS_COLORS.cyan : CANVAS_COLORS.purple;
+            simCtx.strokeStyle = color;
+            simCtx.lineWidth = 1.5;
+            simCtx.strokeRect(hoveredCell.col * cellW + 1, hoveredCell.row * cellH + 1, cellW - 2, cellH - 2);
+            
+            // Draw preview range circle
+            let previewRange = activeBuildTool === 'vitrail-laser' ? 120 : activeBuildTool === 'chant-chain' ? 100 : 80;
+            let px = (hoveredCell.col + 0.5) * cellW;
+            let py = (hoveredCell.row + 0.5) * cellH;
+            
+            simCtx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            simCtx.lineWidth = 1;
+            simCtx.setLineDash([4, 4]);
+            simCtx.beginPath();
+            simCtx.arc(px, py, previewRange, 0, Math.PI * 2);
+            simCtx.stroke();
+            simCtx.setLineDash([]);
+          } else {
+            simCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            simCtx.lineWidth = 1;
+            simCtx.strokeRect(hoveredCell.col * cellW + 1, hoveredCell.row * cellH + 1, cellW - 2, cellH - 2);
+          }
+        }
+      }
+
+      // Red Vignette Flash
+      if (simState.baseDmgFlash > 0) {
+        const intensity = simState.baseDmgFlash / 15.0;
+        
+        // Alpha-blended screen overlay
+        simCtx.fillStyle = `rgba(239, 68, 68, ${intensity * 0.15})`;
+        simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
+        
+        // Thick red border vignette
+        const gradient = simCtx.createRadialGradient(
+          simCanvas.width / 2, simCanvas.height / 2, simCanvas.height / 3,
+          simCanvas.width / 2, simCanvas.height / 2, simCanvas.width / 1.5
+        );
+        gradient.addColorStop(0, 'rgba(239, 68, 68, 0)');
+        gradient.addColorStop(1, `rgba(239, 68, 68, ${intensity * 0.5})`);
+        
+        simCtx.fillStyle = gradient;
+        simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
+      }
+    }
+
+    function updateSimTelemetry() {
+      document.getElementById('vis-tele-wave').textContent = `${simState.wave} / 20`;
+      document.getElementById('vis-tele-hp').textContent = `${simState.baseHp} / 24`;
+      document.getElementById('vis-tele-credits').textContent = simState.credits;
+      document.getElementById('vis-tele-enemies').textContent = simState.enemies.length + simState.enemiesSpawnsLeft;
+      document.getElementById('vis-tele-towers').textContent = simState.towers.length;
+    }
+
+    // -------------------------------------------------------------
+    // INITIALIZATION ON DOCUMENT LOAD
+    // -------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      initSliders();
+      startPolling();
     });
 
-    // Clear Comparison
-    document.getElementById('btn-clear-comp').addEventListener('click', () => {
-      baselineData = null;
-      comparisonBanner.style.display = 'none';
-      renderDashboard();
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (simPlaying) {
+          simPlayingBeforeHide = true;
+          simulatorTogglePlay();
+        }
+      } else {
+        if (simPlayingBeforeHide) {
+          simulatorEnsurePlaying();
+          simPlayingBeforeHide = false;
+        }
+      }
     });
-
-    // Inicializar
-    initConfig();
   </script>
 </body>
 </html>

@@ -4,7 +4,7 @@ import { getEnemyDefinition } from "../data/enemies";
 import { getWaveDefinition } from "../data/waves";
 import { gameDesign } from "../design/gameDesignSystem";
 import { GameRegistry } from "../GameRegistry";
-import type { GameState, RoundNoticeTone } from "../models/types";
+import type { GamePhase, GameState, RoundNoticeTone } from "../models/types";
 import { PhaserHudRenderer } from "../renderers/PhaserHudRenderer";
 
 const roundToneColors: Record<RoundNoticeTone, string> = {
@@ -27,6 +27,11 @@ export class UIScene extends Phaser.Scene {
   private startBannerTitleText!: Phaser.GameObjects.Text;
   private startBannerBodyText!: Phaser.GameObjects.Text;
   private hudRenderer!: PhaserHudRenderer;
+  private entranceFlash!: Phaser.GameObjects.Rectangle;
+  private prevPhase: GamePhase | null = null;
+  private waveCompleteFlashMs = 0;
+  private bossKillFlashMs = 0;
+  private prevNoticeTitle: string | null = null;
 
   constructor() {
     super("UIScene");
@@ -44,13 +49,21 @@ export class UIScene extends Phaser.Scene {
     this.startBannerTitleText = this.createText(GAME_WIDTH / 2, 82, 20, "#ffe39d", "900").setOrigin(0.5, 0);
     this.startBannerBodyText = this.createText(GAME_WIDTH / 2, 108, 10, "#edf7ff", "800", 360).setOrigin(0.5, 0);
     this.hudRenderer = new PhaserHudRenderer(this);
+    this.entranceFlash = this.add
+      .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0)
+      .setOrigin(0)
+      .setDepth(90);
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
     const state = this.gameRegistry.state;
+
+    this.trackPhaseTransition(state.phase);
+    this.trackWaveNotice(state, delta);
 
     this.graphics.clear();
     this.drawBaseHitFlash(state);
+    this.drawWaveFlash();
     this.drawWaveForecast(state);
     this.drawWaveStartBanner(state);
     this.updateRoundNotice(state);
@@ -58,6 +71,64 @@ export class UIScene extends Phaser.Scene {
     this.feedText.setText(state.messages.map((message) => message.text).join("   "));
     this.updateResultText(state);
     this.hudRenderer.render(state);
+  }
+
+  private trackPhaseTransition(phase: GamePhase): void {
+    if (this.prevPhase === phase) {
+      return;
+    }
+
+    const overlayPhases: GamePhase[] = ["paused", "reward-selection", "victory", "defeat"];
+
+    if (overlayPhases.includes(phase)) {
+      this.entranceFlash.setAlpha(0.38);
+      this.tweens.add({
+        targets: this.entranceFlash,
+        alpha: 0,
+        duration: 220,
+        ease: "Quad.easeOut"
+      });
+    }
+
+    this.prevPhase = phase;
+  }
+
+  private trackWaveNotice(state: GameState, delta: number): void {
+    const notice = state.wave.notice;
+
+    if (notice && notice.title !== this.prevNoticeTitle) {
+      if (notice.tone === "complete") {
+        this.waveCompleteFlashMs = 700;
+      } else if (notice.tone === "boss") {
+        this.bossKillFlashMs = 900;
+      }
+    }
+
+    this.prevNoticeTitle = notice ? notice.title : null;
+    this.waveCompleteFlashMs = Math.max(0, this.waveCompleteFlashMs - delta);
+    this.bossKillFlashMs = Math.max(0, this.bossKillFlashMs - delta);
+  }
+
+  private drawWaveFlash(): void {
+    if (this.waveCompleteFlashMs > 0) {
+      const t = Phaser.Math.Clamp(this.waveCompleteFlashMs / 700, 0, 1);
+      const alpha = t * (1 - t) * 4 * 0.55;
+
+      this.graphics.lineStyle(6, 0xb4ff72, alpha);
+      this.graphics.strokeRect(3, 3, GAME_WIDTH - 6, GAME_HEIGHT - 6);
+      this.graphics.fillStyle(0x4ade80, alpha * 0.12);
+      this.graphics.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+
+    if (this.bossKillFlashMs > 0) {
+      const t = Phaser.Math.Clamp(this.bossKillFlashMs / 900, 0, 1);
+      const alpha = t * (1 - t) * 4 * 0.6;
+
+      this.graphics.lineStyle(6, 0xff8db4, alpha);
+      this.graphics.strokeRect(3, 3, GAME_WIDTH - 6, GAME_HEIGHT - 6);
+      this.graphics.fillStyle(0xff4f9a, alpha * 0.1);
+      this.graphics.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
   }
 
   private createText(
@@ -92,7 +163,14 @@ export class UIScene extends Phaser.Scene {
   }
 
   private drawWaveForecast(state: GameState): void {
-    if (!state.debug) {
+    if (
+      state.phase === "class-selection" ||
+      state.phase === "paused" ||
+      state.phase === "reward-selection" ||
+      state.phase === "victory" ||
+      state.phase === "defeat" ||
+      state.phase === "menu"
+    ) {
       this.forecastTitleText.setText("");
       this.forecastBodyText.setText("");
       this.threatText.setText("");
@@ -113,13 +191,6 @@ export class UIScene extends Phaser.Scene {
         `${forecast.isBoss ? "BOSS" : "AMEACA"} ${forecast.threat} | VIVOS ${aliveEnemies} | ROTAS ${forecast.routes}`
       );
       this.forecastTitleText.setColor(forecast.isBoss ? "#ff8db4" : "#83f3ff");
-      this.forecastBodyText.setText("");
-      this.threatText.setText("");
-      return;
-    }
-
-    if (state.phase === "paused" || state.phase === "victory" || state.phase === "defeat") {
-      this.forecastTitleText.setText("");
       this.forecastBodyText.setText("");
       this.threatText.setText("");
       return;

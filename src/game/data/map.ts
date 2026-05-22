@@ -1,6 +1,13 @@
-import type { MapDefinition } from "../models/types";
+import type { GridPoint, MapDefinition } from "../models/types";
 
 const startingCredits = 132;
+const PROCEDURAL_MAP_MAX_WIDTH = 1010;
+const PROCEDURAL_MAP_MAX_HEIGHT = 505;
+const PROCEDURAL_MAP_MIN_TILE_SIZE = 29;
+const GRASS_TD_STAGE_INDEX = 8;
+const GRASS_TD_SIZE = 100;
+const GRASS_TD_TILE_SIZE = 24;
+const GRASS_TD_LANE_ROWS = [6, 14, 22, 30, 38, 46, 54, 62, 70, 78, 86, 94] as const;
 
 export const mapStages: readonly MapDefinition[] = [
   {
@@ -283,10 +290,15 @@ export const getMapStage = (stageIndex: number): MapDefinition => {
 };
 
 const createProceduralMapStage = (stageIndex: number): MapDefinition => {
+  if (stageIndex >= GRASS_TD_STAGE_INDEX) {
+    return createGrassTdMapStage(stageIndex);
+  }
+
   const extraIndex = stageIndex - mapStages.length + 1;
-  const columns = Math.min(24, 18 + Math.floor(extraIndex / 2));
-  const rows = Math.min(12, 10 + Math.floor(extraIndex / 4));
-  const pathCount = Math.min(6, 3 + Math.floor(extraIndex / 2));
+  const columns = Math.min(34, 20 + Math.floor(extraIndex * 2));
+  const rows = Math.min(17, 11 + Math.floor(extraIndex * 0.8));
+  const pathCount = Math.min(8, 4 + Math.floor(extraIndex * 0.75));
+  const layout = getProceduralMapLayout(columns, rows);
   const baseRow = Math.floor(rows / 2) + (extraIndex % 2 === 0 ? 1 : 0);
   const paths = Array.from({ length: pathCount }, (_, pathIndex) =>
     createProceduralPath(columns, rows, pathIndex, extraIndex, baseRow)
@@ -297,14 +309,88 @@ const createProceduralMapStage = (stageIndex: number): MapDefinition => {
     name: `Mapa Expandido ${stageIndex + 1}`,
     columns,
     rows,
-    tileSize: 43,
-    origin: {
-      x: Math.max(186, 253 - Math.max(0, columns - 18) * 18),
-      y: Math.max(96, 126 - Math.max(0, rows - 10) * 10)
-    },
-    baseHp: mapDefinition.baseHp + Math.floor(extraIndex / 3),
+    tileSize: layout.tileSize,
+    origin: layout.origin,
+    baseHp: mapDefinition.baseHp + Math.floor(extraIndex / 2) + pathCount * 2,
     startingCredits,
     paths
+  };
+};
+
+const createGrassTdMapStage = (stageIndex: number): MapDefinition => {
+  const paths = GRASS_TD_LANE_ROWS.map((row, laneIndex) =>
+    createGrassTdLanePath(row, laneIndex)
+  );
+
+  return {
+    id: `grass-td-${String(stageIndex + 1).padStart(2, "0")}`,
+    name: "Campo Grass TD 100x100",
+    columns: GRASS_TD_SIZE,
+    rows: GRASS_TD_SIZE,
+    tileSize: GRASS_TD_TILE_SIZE,
+    origin: { x: 0, y: 0 },
+    baseHp: 72,
+    startingCredits,
+    paths
+  };
+};
+
+const createGrassTdLanePath = (laneRow: number, laneIndex: number): GridPoint[] => {
+  const path: GridPoint[] = [{ col: 0, row: laneRow }];
+  const firstBend = clampGrassRow(laneRow + (laneIndex % 2 === 0 ? 3 : -3));
+  const secondBend = clampGrassRow(laneRow + ((laneIndex % 3) - 1) * 4);
+  const mergeRow = 50;
+
+  appendLine(path, 18, laneRow);
+  appendLine(path, 18, firstBend);
+  appendLine(path, 42, firstBend);
+  appendLine(path, 42, laneRow);
+  appendLine(path, 66, laneRow);
+  appendLine(path, 66, secondBend);
+  appendLine(path, 84, secondBend);
+  appendLine(path, 84, mergeRow);
+  appendLine(path, 99, mergeRow);
+
+  return dedupeAdjacent(path);
+};
+
+const appendLine = (path: GridPoint[], targetCol: number, targetRow: number): void => {
+  let current = path[path.length - 1];
+
+  while (current.col !== targetCol) {
+    current = {
+      col: current.col + (current.col < targetCol ? 1 : -1),
+      row: current.row
+    };
+    path.push(current);
+  }
+
+  while (current.row !== targetRow) {
+    current = {
+      col: current.col,
+      row: current.row + (current.row < targetRow ? 1 : -1)
+    };
+    path.push(current);
+  }
+};
+
+const clampGrassRow = (row: number): number =>
+  Math.max(2, Math.min(GRASS_TD_SIZE - 3, row));
+
+const getProceduralMapLayout = (columns: number, rows: number) => {
+  const tileSize = Math.max(
+    PROCEDURAL_MAP_MIN_TILE_SIZE,
+    Math.floor(Math.min(43, PROCEDURAL_MAP_MAX_WIDTH / columns, PROCEDURAL_MAP_MAX_HEIGHT / rows))
+  );
+  const width = columns * tileSize;
+  const height = rows * tileSize;
+
+  return {
+    tileSize,
+    origin: {
+      x: Math.max(253, Math.round((1280 - width) / 2) + 34),
+      y: Math.max(76, Math.round((720 - height) / 2) + 12)
+    }
   };
 };
 

@@ -151,11 +151,21 @@ class GameUiBridge {
   }
 
   sendLocalGameAction(action: GameAction): void {
-    if (onlineClient.getState().localPlayerId !== ("playerId" in action ? action.playerId : null)) {
+    const clientState = onlineClient.getState();
+    const isOnline = onlineClient.isOnlineRunActive();
+    if (!isOnline) {
       return;
     }
 
-    onlineClient.sendGameAction(action);
+    const actionPlayerId = "playerId" in action ? action.playerId : null;
+    const isLocal = clientState.localPlayerId === actionPlayerId;
+    const isHost = clientState.clientId && clientState.room?.hostClientId === clientState.clientId;
+    const targetSeat = clientState.room?.seats.find((s) => s.id === actionPlayerId);
+    const isTargetAi = targetSeat?.kind === "ai-partner";
+
+    if (isLocal || (isHost && isTargetAi)) {
+      onlineClient.sendGameAction(action);
+    }
   }
 
   applyRemoteGameAction(action: GameAction): boolean {

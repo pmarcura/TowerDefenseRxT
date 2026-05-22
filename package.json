@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "vite --host 0.0.0.0",
     "server": "node server/multiplayer-server.mjs",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1",
+    "preview": "vite preview --host 0.0.0.0",
     "simulate:balance": "node scripts/simulate-balancing.mjs",
     "simulate:balance:large": "node scripts/simulate-balancing.mjs --runs 5000",
     "ai:simulate": "node scripts/ai-simulate.mjs",
@@ -16,15 +16,10 @@
     "lab:report": "node scripts/lab-report.mjs"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^5.2.0",
     "phaser": "^4.1.0",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
     "ws": "^8.20.1"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
     "typescript": "^5.8.3",
     "vite": "^6.3.5"
   }

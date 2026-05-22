@@ -324,7 +324,7 @@ export class KeyboardCoopController {
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     const state = this.registry.state;
 
-    if (state.phase !== "playing" || state.towerInspection) {
+    if (state.phase !== "playing" || state.towerInspection || pointer.rightButtonDown()) {
       return;
     }
 
@@ -334,7 +334,8 @@ export class KeyboardCoopController {
       return;
     }
 
-    const grid = worldToGrid({ x: pointer.x, y: pointer.y }, state.activeMap);
+    const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const grid = worldToGrid({ x: worldPoint.x, y: worldPoint.y }, state.activeMap);
 
     if (!isInsideGrid(grid, state.activeMap)) {
       return;

@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "../config/constants";
 import { GameRegistry } from "../GameRegistry";
 import type { GameSessionMode } from "../models/types";
-import type { MultiplayerSessionConfig } from "../network/sessionTypes";
 import { AmbientParticleRenderer } from "../renderers/AmbientParticleRenderer";
 
 type MenuOption = {
@@ -30,6 +29,12 @@ const menuOptions: readonly MenuOption[] = [
     detail: "estrutura preparada para 2-12 jogadores",
     mode: "online-lobby-preview",
     enabled: true
+  },
+  {
+    label: "AI Playground",
+    detail: "painel e visualizador automatico para treinar e simular a IA",
+    mode: "ai-playground",
+    enabled: true
   }
 ];
 
@@ -43,15 +48,6 @@ export class MainMenuScene extends Phaser.Scene {
   private readonly optionTexts: Phaser.GameObjects.Text[] = [];
   private readonly optionDetailTexts: Phaser.GameObjects.Text[] = [];
   private selectedIndex = 0;
-  private readonly handleStartOnlineRun = (event: Event) => {
-    const session = (event as CustomEvent<MultiplayerSessionConfig>).detail;
-
-    if (!session) {
-      return;
-    }
-
-    this.scene.start("GameScene", { sessionMode: session.mode, session });
-  };
 
   constructor() {
     super("MainMenuScene");
@@ -66,9 +62,8 @@ export class MainMenuScene extends Phaser.Scene {
     this.createTexts();
     this.createStartInput();
     this.input.on("pointerdown", this.handlePointerDown, this);
-    window.addEventListener("aegis:start-online-run", this.handleStartOnlineRun);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      window.removeEventListener("aegis:start-online-run", this.handleStartOnlineRun);
+      this.input.off("pointerdown", this.handlePointerDown, this);
     });
   }
 
@@ -142,7 +137,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, 486, "Pressione Space ou Enter", {
+      .text(GAME_WIDTH / 2, 515, "Pressione Space ou Enter", {
         fontFamily: "Inter, system-ui, sans-serif",
         fontSize: "15px",
         color: "#9de8ff"
@@ -150,7 +145,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, 526, "W/S ou setas escolhem  ·  Enter confirma  ·  Mouse funciona nos menus", {
+      .text(GAME_WIDTH / 2, 555, "W/S ou setas escolhem  ·  Enter confirma  ·  Mouse funciona nos menus", {
         fontFamily: "Inter, system-ui, sans-serif",
         fontSize: "13px",
         color: "#b9c9d8"
@@ -207,10 +202,17 @@ export class MainMenuScene extends Phaser.Scene {
     menuOptions.forEach((option, index) => {
       const selected = index === this.selectedIndex;
       const x = GAME_WIDTH / 2 - 220;
-      const y = 278 + index * 66;
+      const y = 240 + index * 66;
       const width = 440;
       const height = 52;
-      const accent = option.mode === "solo-ai" ? 0x83f3ff : option.mode === "local-coop" ? 0xffd36d : 0x8ea4b3;
+      const accent =
+        option.mode === "solo-ai"
+          ? 0x83f3ff
+          : option.mode === "local-coop"
+          ? 0xffd36d
+          : option.mode === "ai-playground"
+          ? 0xa855f7
+          : 0x8ea4b3;
       const alpha = option.enabled ? 1 : 0.42;
 
       this.menuGraphics.fillStyle(selected ? 0x0b1b27 : 0x04101a, selected ? 0.96 : 0.74);
@@ -267,9 +269,14 @@ export class MainMenuScene extends Phaser.Scene {
       return;
     }
 
+    if (option.mode === "ai-playground") {
+      window.location.href = "/tools/balance-playground.html";
+      return;
+    }
+
     GameRegistry.getInstance().setNextSessionMode(option.mode);
     if (option.mode === "online-lobby-preview") {
-      window.dispatchEvent(new CustomEvent("aegis:open-online-lobby"));
+      this.scene.start("OnlineLobbyScene");
       return;
     }
 
@@ -279,7 +286,7 @@ export class MainMenuScene extends Phaser.Scene {
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     for (let index = 0; index < menuOptions.length; index += 1) {
       const x = GAME_WIDTH / 2 - 220;
-      const y = 278 + index * 66;
+      const y = 240 + index * 66;
 
       if (pointer.x >= x && pointer.x <= x + 440 && pointer.y >= y && pointer.y <= y + 52) {
         this.selectedIndex = index;

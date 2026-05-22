@@ -9,11 +9,20 @@ import type {
   PlayerId,
   SkillDefinition,
   TowerDefinition,
-  TowerUpgradeBranchId
+  TowerUpgradeBranchId,
+  GameState
 } from "../../game/models/types";
+import { getPlayablePlayerIds } from "../../game/utils/players";
 import { gridKey, isGridOnPath, isInsideGrid } from "../../game/utils/grid";
 import type { Rng } from "../env/Rng";
-import type { HeadlessGameState, HeadlessTowerState } from "../env/types";
+import type {
+  HeadlessGameState,
+  HeadlessTowerState,
+  HeadlessPlayerState,
+  HeadlessRewardSelectionState,
+  HeadlessRewardChoiceState,
+  HeadlessPhase
+} from "../env/types";
 import {
   chooseReadyAction,
   chooseWaitAction,
@@ -21,6 +30,8 @@ import {
   getCurrentWave,
   getTowerCostForState
 } from "../bots/botUtils";
+
+import championPolicyJson from "./champion-policy.json";
 
 export type LearningPolicy = {
   id: string;
@@ -68,6 +79,25 @@ export type PolicyWeights = {
 export type PolicyDecisionTrace = {
   reason: string;
   score: number;
+};
+
+export const championPolicy: LearningPolicy = championPolicyJson as LearningPolicy;
+
+export const getChampionPolicy = (): LearningPolicy => {
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    try {
+      const saved = localStorage.getItem("aegis-champion-policy");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.weights) {
+          return parsed as LearningPolicy;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load aegis-champion-policy from localStorage:", e);
+    }
+  }
+  return championPolicy;
 };
 
 export const defaultProPolicy: LearningPolicy = {
@@ -159,7 +189,11 @@ export const choosePolicyAction = (
   playerIds: readonly PlayerId[],
   rng: Rng
 ): GameAction => {
-  const activePolicy = normalizePolicy(policy);
+  let resolvedPolicy = policy;
+  if (policy === championPolicy) {
+    resolvedPolicy = getChampionPolicy();
+  }
+  const activePolicy = normalizePolicy(resolvedPolicy);
   const rewardAction = choosePolicyReward(activePolicy, state, playerIds);
 
   if (rewardAction) {
@@ -297,14 +331,16 @@ const choosePolicyBuild = (
   rng: Rng
 ): GameAction | null => {
   const currentWave = state.currentWaveIndex;
+  const controlledTowers = state.towers.filter((tower) => playerIds.includes(tower.ownerId));
   const desiredTowers =
-    policy.weights.desiredTowersBase +
-    currentWave * policy.weights.desiredTowersPerWave +
-    (currentWave >= 7 ? policy.weights.lateGameSpendBias * 2 : 0);
+    playerIds.length *
+    (policy.weights.desiredTowersBase +
+      currentWave * policy.weights.desiredTowersPerWave +
+      (currentWave >= 7 ? policy.weights.lateGameSpendBias * 2 : 0));
   const teamCredits = playerIds.reduce((sum, playerId) => sum + state.players[playerId].credits, 0);
   const reserve = playerIds.length * (policy.weights.reserveBase + currentWave * policy.weights.reservePerWave);
   const shouldSpend =
-    state.towers.length < desiredTowers ||
+    controlledTowers.length < desiredTowers ||
     teamCredits > reserve * (1.35 - Math.min(0.55, policy.weights.spendPressure * 0.42));
 
   if (!shouldSpend) {
@@ -328,7 +364,7 @@ const choosePolicyBuild = (
     return null;
   }
 
-  const grid = choosePolicyBuildGrid(policy, state, best.tower, rng);
+  const grid = choosePolicyBuildGrid(policy, state, best.tower, best.playerId, rng);
 
   if (!grid) {
     return null;
@@ -346,11 +382,16 @@ const choosePolicyBuildGrid = (
   policy: LearningPolicy,
   state: HeadlessGameState,
   tower: TowerDefinition,
+  playerId: PlayerId,
   rng: Rng
 ): GridPoint | null => {
   const map = getCurrentMap(state);
   const occupied = new Set(state.towers.map((towerEntity) => gridKey(towerEntity.grid)));
   const candidates: { grid: GridPoint; score: number }[] = [];
+  const preferredPathIndex = getPreferredPathIndex(playerId, map.paths.length);
+  const preferredPath = map.paths[preferredPathIndex] ?? map.paths[0];
+  const preferredLaneRow = preferredPath?.[0]?.row ?? Math.floor(map.rows / 2);
+  const largeLaneMap = map.columns >= 80 && map.rows >= 80;
 
   for (let row = 0; row < map.rows; row += 1) {
     for (let col = 0; col < map.columns; col += 1) {
@@ -360,19 +401,38 @@ const choosePolicyBuildGrid = (
         continue;
       }
 
-      const pathScore = scoreGridAgainstPaths(policy, map.paths, grid, tower.range / map.tileSize);
+      if (
+        largeLaneMap &&
+        (Math.abs(row - preferredLaneRow) > 6 || col > Math.floor(map.columns * 0.78))
+      ) {
+        continue;
+      }
+
+      const rangeTiles = tower.range / map.tileSize;
+      const pathScore = scoreGridAgainstPaths(policy, map.paths, grid, rangeTiles);
+      const laneScore = preferredPath
+        ? scoreGridAgainstPath(preferredPath, grid, rangeTiles) * (largeLaneMap ? 1.2 : 2.8)
+        : 0;
+      const coveredPathCount = countCoveredPaths(map.paths, grid, rangeTiles);
+      const laneBandScore = largeLaneMap
+        ? Math.max(0, 10 - Math.abs(row - preferredLaneRow)) * 3.2
+        : 0;
+      const lateMergePenalty = largeLaneMap ? Math.max(0, col - Math.floor(map.columns * 0.74)) * 0.72 : 0;
       const nearbyTowerPenalty = state.towers.reduce((penalty, existing) => {
         const distance = Math.abs(existing.grid.col - col) + Math.abs(existing.grid.row - row);
 
         return penalty + Math.max(0, 4 - distance);
       }, 0);
-      const centrality = -Math.abs(col - map.columns / 2) * 0.05;
+      const overSharedChokePenalty = Math.max(0, coveredPathCount - 3) * (largeLaneMap ? 8.4 : 2.4);
 
       candidates.push({
         grid,
         score:
           pathScore +
-          centrality -
+          laneScore -
+          lateMergePenalty +
+          laneBandScore -
+          overSharedChokePenalty -
           nearbyTowerPenalty * policy.weights.buildSpacingBias * 0.28 +
           rng.next() * 0.35
       });
@@ -380,6 +440,50 @@ const choosePolicyBuildGrid = (
   }
 
   return candidates.sort((a, b) => b.score - a.score)[0]?.grid ?? null;
+};
+
+const getPreferredPathIndex = (playerId: PlayerId, pathCount: number): number => {
+  const numericId = Number(playerId.slice(1));
+  const safeNumber = Number.isFinite(numericId) ? numericId : 1;
+
+  return Math.max(0, safeNumber - 1) % Math.max(1, pathCount);
+};
+
+const countCoveredPaths = (
+  paths: readonly (readonly GridPoint[])[],
+  grid: GridPoint,
+  rangeTiles: number
+): number =>
+  paths.filter((path) => getBestDistanceToPath(path, grid).distance <= rangeTiles).length;
+
+const scoreGridAgainstPath = (
+  path: readonly GridPoint[],
+  grid: GridPoint,
+  rangeTiles: number
+): number => {
+  const { distance, progress } = getBestDistanceToPath(path, grid);
+  const coverage = distance <= rangeTiles ? 5.5 : -Math.min(5, distance - rangeTiles);
+
+  return coverage + Math.max(0, 7 - distance) * 0.62 + progress * 4.2;
+};
+
+const getBestDistanceToPath = (
+  path: readonly GridPoint[],
+  grid: GridPoint
+): { distance: number; progress: number } => {
+  let distance = Number.POSITIVE_INFINITY;
+  let progress = 0;
+
+  path.forEach((point, index) => {
+    const candidateDistance = Math.abs(point.col - grid.col) + Math.abs(point.row - grid.row);
+
+    if (candidateDistance < distance) {
+      distance = candidateDistance;
+      progress = path.length <= 1 ? 1 : index / (path.length - 1);
+    }
+  });
+
+  return { distance, progress };
 };
 
 const scoreGridAgainstPaths = (
@@ -662,3 +766,84 @@ const gaussianish = (rng: Rng): number =>
   (rng.next() + rng.next() + rng.next() + rng.next() - 2) / 2;
 
 const pick = (a: number, b: number, rng: Rng): number => (rng.next() < 0.5 ? a : b);
+
+export const mapGameStateToHeadless = (fullState: GameState): HeadlessGameState => {
+  const players: Record<PlayerId, HeadlessPlayerState> = {} as any;
+  for (const playerId of getPlayablePlayerIds(fullState)) {
+    const eco = fullState.economies[playerId];
+    const stats = fullState.combatStats[playerId];
+    const skillTree = fullState.skillTrees[playerId];
+    const ready = fullState.wave.readyPlayers[playerId] ?? false;
+
+    players[playerId] = {
+      id: playerId,
+      classId: fullState.playerClasses[playerId] ?? "",
+      credits: eco?.credits ?? 0,
+      sigils: skillTree?.bossSigils ?? 0,
+      ready,
+      skillRanks: skillTree?.skillRanks ?? {},
+      damage: stats?.totalDamageDealt ?? 0,
+      kills: stats?.kills ?? 0,
+      towersBuilt: stats?.towersBuilt ?? 0
+    };
+  }
+
+  const towers: HeadlessTowerState[] = fullState.towers.map((t) => ({
+    id: t.id,
+    typeId: t.typeId,
+    ownerId: t.ownerId,
+    grid: { ...t.grid },
+    level: t.level,
+    xp: t.xp,
+    xpToNext: t.xpToNext,
+    skillPoints: t.skillPoints,
+    branchRanks: { ...t.branchRanks },
+    autoBuildId: t.autoBuildId ?? "balanced",
+    kills: t.kills,
+    damageDealt: t.damageDealt
+  }));
+
+  const rewardSelection: HeadlessRewardSelectionState | null = fullState.rewardSelection ? {
+    bossWaveId: fullState.rewardSelection.bossWaveId,
+    choices: Object.fromEntries(
+      Object.entries(fullState.rewardSelection.choices).map(([pId, choice]) => [
+        pId,
+        {
+          playerId: choice.playerId as PlayerId,
+          skillIds: [...choice.skillIds],
+          selectedSkillId: choice.selectedSkillId
+        }
+      ])
+    ) as Record<PlayerId, HeadlessRewardChoiceState>
+  } : null;
+
+  let mappedPhase: HeadlessPhase = fullState.phase as HeadlessPhase;
+  if (fullState.phase === "playing") {
+    mappedPhase = fullState.wave.active ? "combat" : "preparation";
+  }
+
+  let mappedPrevPhase: HeadlessPhase | null = fullState.previousPhase as HeadlessPhase | null;
+  if (fullState.previousPhase === "playing") {
+    mappedPrevPhase = "preparation";
+  }
+
+  return {
+    version: "1.0.0",
+    seed: fullState.session.seed,
+    mapId: fullState.activeMap.id,
+    activeMap: fullState.activeMap,
+    phase: mappedPhase,
+    previousPhase: mappedPrevPhase,
+    debug: fullState.debug,
+    tick: 0,
+    elapsedMs: fullState.elapsedMs,
+    currentWaveIndex: fullState.wave.currentWaveIndex,
+    targetWaveCount: fullState.session.maxPlayers,
+    baseHp: fullState.baseHp,
+    readyCountdownMs: 0,
+    players,
+    towers,
+    rewardSelection,
+    waveLog: []
+  };
+};

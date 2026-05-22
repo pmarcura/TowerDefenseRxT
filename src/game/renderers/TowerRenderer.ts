@@ -49,7 +49,7 @@ export class TowerRenderer {
     for (const playerId of getLocalPlayerIds(state.session)) {
       this.drawCursor(state, playerId);
     }
-    this.syncOwnerLabels(state);
+    this.syncOwnerLabels(state, focusedTowerIds);
   }
 
   private drawRange(tower: TowerEntity): void {
@@ -332,7 +332,7 @@ export class TowerRenderer {
     }
   }
 
-  private syncOwnerLabels(state: GameState): void {
+  private syncOwnerLabels(state: GameState, focusedTowerIds: ReadonlySet<string>): void {
     const liveTowerIds = new Set(state.towers.map((tower) => tower.id));
 
     for (const [towerId, label] of this.ownerLabels) {
@@ -343,7 +343,11 @@ export class TowerRenderer {
     }
 
     for (const tower of state.towers) {
-      const shouldShow = state.sessionMode !== "solo-ai" || tower.ownerId !== "p1";
+      const largeMap = state.activeMap.columns >= 80 && state.activeMap.rows >= 80;
+      const zoom = this.scene.cameras.main.zoom;
+      const shouldShow =
+        (state.sessionMode !== "solo-ai" || tower.ownerId !== "p1") &&
+        (!largeMap || zoom >= 0.56 || focusedTowerIds.has(tower.id));
       let label = this.ownerLabels.get(tower.id);
 
       if (!label) {

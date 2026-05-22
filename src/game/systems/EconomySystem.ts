@@ -10,6 +10,7 @@ import { getPlayerClassDefinition } from "../data/playerClasses";
 import { getTowerDefinition } from "../data/towers";
 import type { PlayerId } from "../models/types";
 import { getPlayablePlayerIds } from "../utils/players";
+import { getTeamRewardScale } from "../utils/playerScaling";
 import { balanceConfig } from "../config/BalanceConfig";
 
 export class EconomySystem implements GameSystem {
@@ -79,7 +80,11 @@ export class EconomySystem implements GameSystem {
       return 0;
     }
 
-    const credits = Math.max(1, Math.floor(amount * scale * this.getTeamRewardMultiplier()));
+    const playerCount = getPlayablePlayerIds(this.registry.state).length;
+    const credits = Math.max(
+      1,
+      Math.floor(amount * scale * this.getTeamRewardMultiplier() * getTeamRewardScale(playerCount))
+    );
 
     for (const playerId of getPlayablePlayerIds(this.registry.state)) {
       this.registry.state.economies[playerId].credits += credits;

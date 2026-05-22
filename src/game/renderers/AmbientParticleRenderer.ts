@@ -17,7 +17,7 @@ export class AmbientParticleRenderer {
   private readonly particles: AmbientParticle[];
 
   constructor(scene: Phaser.Scene) {
-    this.graphics = scene.add.graphics();
+    this.graphics = scene.add.graphics().setScrollFactor(0);
     this.particles = Array.from({ length: 50 }, () => this.createParticle());
   }
 

@@ -2,7 +2,7 @@ import type { MultiplayerSessionConfig } from "../network/sessionTypes";
 
 export type PlayerId = `p${number}`;
 
-export type GameSessionMode = "solo-ai" | "local-coop" | "online-lobby-preview";
+export type GameSessionMode = "solo-ai" | "local-coop" | "online-lobby-preview" | "ai-playground";
 
 export type GridPoint = {
   readonly col: number;

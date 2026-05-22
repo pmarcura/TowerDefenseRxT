@@ -2,9 +2,9 @@ import Phaser from "phaser";
 import { BootScene } from "./game/scenes/BootScene";
 import { GameScene } from "./game/scenes/GameScene";
 import { MainMenuScene } from "./game/scenes/MainMenuScene";
+import { OnlineLobbyScene } from "./game/scenes/OnlineLobbyScene";
 import { PreloadScene } from "./game/scenes/PreloadScene";
 import { UIScene } from "./game/scenes/UIScene";
-import { mountUi } from "./ui/mount";
 import "./styles.css";
 
 const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -19,8 +19,7 @@ const gameConfig: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
-  scene: [BootScene, PreloadScene, MainMenuScene, GameScene, UIScene]
+  scene: [BootScene, PreloadScene, MainMenuScene, OnlineLobbyScene, GameScene, UIScene]
 };
 
 new Phaser.Game(gameConfig);
-mountUi();

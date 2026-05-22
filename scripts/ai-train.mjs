@@ -60,6 +60,7 @@ const files = {
   html: path.join(reportDir, `dashboard-${stamp}.html`),
   dataset: path.join(reportDir, `champion-dataset-${stamp}.jsonl`),
   champion: path.join(reportDir, "champion-policy.json"),
+  srcChampion: path.join(rootDir, "src", "ai", "learning", "champion-policy.json"),
   latestJson: path.join(reportDir, "latest.json"),
   latestMd: path.join(reportDir, "latest.md"),
   latestHtml: path.join(reportDir, "dashboard.html"),
@@ -71,6 +72,7 @@ await writeFile(files.md, markdown, "utf8");
 await writeFile(files.html, dashboard, "utf8");
 await writeFile(files.dataset, dataset, "utf8");
 await writeFile(files.champion, `${JSON.stringify(report.champion.policy, null, 2)}\n`, "utf8");
+await writeFile(files.srcChampion, `${JSON.stringify(report.champion.policy, null, 2)}\n`, "utf8");
 await writeFile(files.latestJson, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 await writeFile(files.latestMd, markdown, "utf8");
 await writeFile(files.latestHtml, dashboard, "utf8");

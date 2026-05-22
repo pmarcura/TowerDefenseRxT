@@ -1,5 +1,6 @@
 import type {
   GridPoint,
+  MapDefinition,
   PlayerId,
   TowerAutoBuildId,
   TowerBranchRanks
@@ -65,6 +66,7 @@ export type HeadlessGameState = {
   version: string;
   seed: number;
   mapId: string;
+  activeMap?: MapDefinition;
   phase: HeadlessPhase;
   previousPhase: HeadlessPhase | null;
   debug: boolean;

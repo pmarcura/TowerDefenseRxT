@@ -43,6 +43,7 @@ import {
   getRemoteOrAiPlayerIds,
   getSessionPlayerIds
 } from "./utils/players";
+import { getOpeningMapStageIndex, getStartingCreditScale } from "./utils/playerScaling";
 
 const SETTINGS_STORAGE_KEY = "aegis-sacra-settings";
 const runTelemetry = RunTelemetry.getInstance();
@@ -73,29 +74,30 @@ const loadSettings = (): GameSettings => {
   }
 };
 
-const createInitialCursor = (selectedTowerIndex: number) => ({
-  grid: {
-    col: selectedTowerIndex % 2 === 0 ? 2 + selectedTowerIndex : 11,
-    row: selectedTowerIndex % 2 === 0 ? 6 : 2 + Math.floor(selectedTowerIndex / 2)
-  },
-  selectedTowerIndex,
-  moveCooldownMs: 0
-});
+const createInitialCursor = (selectedTowerIndex: number, map: MapDefinition) => {
+  if (map.columns >= 80 && map.rows >= 80) {
+    const laneRows = [6, 14, 22, 30, 38, 46, 54, 62, 70, 78, 86, 94];
+    const laneRow = laneRows[selectedTowerIndex % laneRows.length] ?? Math.floor(map.rows / 2);
+    const band = Math.floor(selectedTowerIndex / laneRows.length);
 
-const getOpeningMapStageIndex = (playerCount: number): number => {
-  if (playerCount >= 10) {
-    return 4;
+    return {
+      grid: {
+        col: Math.min(map.columns - 3, 8 + band * 6),
+        row: Math.min(map.rows - 2, Math.max(1, laneRow + 2))
+      },
+      selectedTowerIndex,
+      moveCooldownMs: 0
+    };
   }
 
-  if (playerCount >= 7) {
-    return 3;
-  }
-
-  if (playerCount >= 4) {
-    return 2;
-  }
-
-  return 0;
+  return {
+    grid: {
+      col: selectedTowerIndex % 2 === 0 ? 2 + selectedTowerIndex : 11,
+      row: selectedTowerIndex % 2 === 0 ? 6 : 2 + Math.floor(selectedTowerIndex / 2)
+    },
+    selectedTowerIndex,
+    moveCooldownMs: 0
+  };
 };
 
 const createInitialState = (
@@ -103,6 +105,10 @@ const createInitialState = (
 ): GameState => {
   const playerIds = getSessionPlayerIds(session);
   const openingMap = getMapStage(getOpeningMapStageIndex(playerIds.length));
+  const startingCredits = Math.round(
+    balanceConfig.getStartingCredits(openingMap.startingCredits) *
+      getStartingCreditScale(playerIds.length)
+  );
 
   return {
     phase: "menu",
@@ -120,7 +126,7 @@ const createInitialState = (
     presentationEvents: [],
     activeMap: openingMap,
     economies: createPlayerRecord(playerIds, () => ({
-      credits: balanceConfig.getStartingCredits(openingMap.startingCredits),
+      credits: startingCredits,
       rewardMultiplier: 1
     })),
     combatStats: createPlayerRecord(playerIds, () => ({
@@ -145,7 +151,7 @@ const createInitialState = (
     allies: [],
     ritualZones: [],
     projectiles: [],
-    cursors: createPlayerRecord(playerIds, (_playerId, index) => createInitialCursor(index)),
+    cursors: createPlayerRecord(playerIds, (_playerId, index) => createInitialCursor(index, openingMap)),
     playerClasses: createPlayerRecord(playerIds, (_playerId, index) => {
       const definition = playerClassDefinitions[index % playerClassDefinitions.length];
 
@@ -192,6 +198,7 @@ export class GameRegistry {
   }
 
   setNextSessionMode(sessionMode: GameSessionMode): void {
+    if (sessionMode === "ai-playground") return;
     const playerCount = sessionMode === "online-lobby-preview" ? 4 : 2;
     this.nextSession = createDefaultMultiplayerSession(playerCount, this.nextSession.seed, sessionMode);
     this.state.sessionMode = sessionMode;

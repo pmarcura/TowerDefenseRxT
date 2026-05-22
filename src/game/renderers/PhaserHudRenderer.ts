@@ -18,7 +18,7 @@ import {
   toHexColor
 } from "../design/gameDesignSystem";
 import { GameRegistry } from "../GameRegistry";
-import type { GameState, PlayerId, TowerEffect, TowerEntity } from "../models/types";
+import type { GameSettings, GameState, PlayerId, TowerEffect, TowerEntity } from "../models/types";
 import { RunTelemetry } from "../telemetry/RunTelemetry";
 import { gridKey, isGridOnPath, isInsideGrid } from "../utils/grid";
 import {
@@ -26,6 +26,12 @@ import {
   calculateTowerPreviewStats,
   calculateTowerRuntimeStats
 } from "../utils/towerStats";
+import {
+  getLocalPlayerIds,
+  getPlayablePlayerIds,
+  getPlayerLabel,
+  getRemoteOrAiPlayerIds
+} from "../utils/players";
 
 type HudButton = {
   x: number;
@@ -36,9 +42,9 @@ type HudButton = {
   enabled?: boolean;
 };
 
-const statusPanels: Record<PlayerId, { x: number; y: number }> = {
-  p1: { x: 8, y: 82 },
-  p2: { x: GAME_WIDTH - gameDesign.hud.sidePanelWidth - 8, y: 82 }
+const sidePanelSlots = {
+  left: { x: 8, y: 82 },
+  right: { x: GAME_WIDTH - gameDesign.hud.sidePanelWidth - 8, y: 82 }
 };
 
 const debugButton = { x: GAME_WIDTH - 164, y: 12, width: 150, height: 32 };
@@ -74,17 +80,33 @@ export class PhaserHudRenderer {
     this.drawTimeline(state);
 
     if (state.phase === "playing" || state.phase === "paused") {
-      this.drawPlayerStatus(state, "p1");
-      this.drawContextPanel(state, "p1");
+      const playablePlayerIds = getPlayablePlayerIds(state);
+      const localPlayerIds = getLocalPlayerIds(state.session);
+      const primaryPlayerId = localPlayerIds[0] ?? playablePlayerIds[0];
+      const secondaryLocalPlayerId = localPlayerIds.find((playerId) => playerId !== primaryPlayerId);
+
+      if (primaryPlayerId) {
+        this.drawPlayerStatus(state, primaryPlayerId, "left");
+        this.drawContextPanel(state, primaryPlayerId, "left");
+      }
 
       if (state.sessionMode === "solo-ai") {
-        this.drawQuickbar(state, "p1");
+        if (primaryPlayerId) {
+          this.drawQuickbar(state, primaryPlayerId);
+        }
         this.drawAiPanel(state);
+      } else if (secondaryLocalPlayerId) {
+        this.drawPlayerStatus(state, secondaryLocalPlayerId, "right");
+        this.drawContextPanel(state, secondaryLocalPlayerId, "right");
+        if (primaryPlayerId) {
+          this.drawSideQuickbar(state, primaryPlayerId, "left");
+        }
+        this.drawSideQuickbar(state, secondaryLocalPlayerId, "right");
       } else {
-        this.drawPlayerStatus(state, "p2");
-        this.drawContextPanel(state, "p2");
-        this.drawSideQuickbar(state, "p1");
-        this.drawSideQuickbar(state, "p2");
+        if (primaryPlayerId) {
+          this.drawQuickbar(state, primaryPlayerId);
+        }
+        this.drawTeamPanel(state, primaryPlayerId);
       }
     }
 
@@ -137,20 +159,17 @@ export class PhaserHudRenderer {
       : `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`;
     const detail = state.wave.active ? `${routes || 1} rota(s) ativa(s)` : "";
     const accent = wave.isBoss ? gameDesign.color.pink : gameDesign.color.cyan;
+    const playerIds = getPlayablePlayerIds(state);
+    const readyCount = playerIds.filter((playerId) => state.wave.readyPlayers[playerId]).length;
+    const allReady = playerIds.length > 0 && readyCount === playerIds.length;
 
     this.panel(x, y, width, height, accent, 0.82);
     this.graphics.fillStyle(accent, 0.06);
     this.graphics.fillRoundedRect(x + 2, y + 2, 248, height - 4, 8);
     this.textRole(x + 18, y + 12, statusLabel, "label", toHexColor(accent));
     this.textRole(x + 18, y + 35, wave.name, "title", "#edf7ff", 0, 218);
-    this.drawReadyChip(x + 18, y + 62, "P1", state.wave.readyPlayers.p1, playerColor("p1"));
-    this.drawReadyChip(
-      x + 108,
-      y + 62,
-      state.sessionMode === "solo-ai" ? "IA" : "P2",
-      state.sessionMode === "solo-ai" || state.wave.readyPlayers.p2,
-      playerColor("p2")
-    );
+    this.drawReadyChip(x + 18, y + 62, "PRONTOS", allReady, allReady ? gameDesign.color.success : gameDesign.color.gold);
+    this.textRole(x + 126, y + 65, `${readyCount}/${playerIds.length || 1}`, "meta", allReady ? "#b4ff72" : "#ffe39d", 0, 52);
 
     if (detail) {
       this.textRole(x + 196, y + 65, detail, "meta", "#a9bac6", 0, 48);
@@ -203,14 +222,17 @@ export class PhaserHudRenderer {
     const height = 54;
 
     this.panel(x, y, width, height, color, 0.84);
-    this.textRole(x + 18, y + 8, state.wave.readyPlayers.p1 ? "Comecando" : "Preparacao", "label", toHexColor(color));
+    const playerIds = getPlayablePlayerIds(state);
+    const readyCount = playerIds.filter((playerId) => state.wave.readyPlayers[playerId]).length;
+
+    this.textRole(x + 18, y + 8, readyCount > 0 ? `${readyCount}/${playerIds.length} prontos` : "Preparacao", "label", toHexColor(color));
     this.textRole(x + 18, y + 29, wave.name, "body", "#edf7ff", 0, 205);
     this.textRole(x + width - 104, y + 8, "Comeca em", "meta", "#a9bac6", 0.5);
     this.text(x + width - 18, y + 4, `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`, 34, "#edf7ff", "900", 1);
   }
 
-  private drawPlayerStatus(state: GameState, playerId: PlayerId): void {
-    const panel = statusPanels[playerId];
+  private drawPlayerStatus(state: GameState, playerId: PlayerId, slot: "left" | "right" = "left"): void {
+    const panel = sidePanelSlots[slot];
     const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
     const width = gameDesign.hud.sidePanelWidth;
     const height = gameDesign.hud.statusPanelHeight;
@@ -232,9 +254,9 @@ export class PhaserHudRenderer {
     this.drawMetricIcon(panel.x + 174, panel.y + 86, "tower", "Torres", `${towers}`, playerClass.accent);
   }
 
-  private drawContextPanel(state: GameState, playerId: PlayerId): void {
+  private drawContextPanel(state: GameState, playerId: PlayerId, slot: "left" | "right" = "left"): void {
     const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
-    const x = statusPanels[playerId].x;
+    const x = sidePanelSlots[slot].x;
     const y = 228;
     const width = gameDesign.hud.sidePanelWidth;
     const height = gameDesign.hud.contextPanelHeight;
@@ -377,9 +399,9 @@ export class PhaserHudRenderer {
     this.drawControlRibbon(shopX, y + 102, playerId);
   }
 
-  private drawSideQuickbar(state: GameState, playerId: PlayerId): void {
+  private drawSideQuickbar(state: GameState, playerId: PlayerId, slot: "left" | "right" = "left"): void {
     const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
-    const x = statusPanels[playerId].x;
+    const x = sidePanelSlots[slot].x;
     const y = GAME_HEIGHT - 126;
     const width = gameDesign.hud.sidePanelWidth;
     const height = 112;
@@ -412,23 +434,31 @@ export class PhaserHudRenderer {
   }
 
   private drawAiPanel(state: GameState): void {
-    const playerClass = getPlayerClassDefinition(state.playerClasses.p2);
+    const aiPlayerId =
+      state.session.seats.find((seat) => seat.kind === "ai-partner" && seat.connected)?.id ??
+      getRemoteOrAiPlayerIds(state)[0];
+
+    if (!aiPlayerId) {
+      return;
+    }
+
+    const playerClass = getPlayerClassDefinition(state.playerClasses[aiPlayerId]);
     const decision = state.aiPartner.lastDecision;
-    const x = statusPanels.p2.x;
+    const x = sidePanelSlots.right.x;
     const y = 82;
     const width = gameDesign.hud.sidePanelWidth;
     const height = 220;
-    const towers = state.towers.filter((tower) => tower.ownerId === "p2").length;
+    const towers = state.towers.filter((tower) => tower.ownerId === aiPlayerId).length;
 
     this.panel(x, y, width, height, playerClass.accent, 0.78);
     this.graphics.fillStyle(playerClass.accent, 0.1);
     this.graphics.fillRoundedRect(x + 2, y + 2, width - 4, 40, 8);
-    this.textRole(x + 14, y + 10, "P2 Bot", "label", toHexColor(playerClass.accent));
-    this.textRole(x + width - 14, y + 8, `${state.economies.p2.credits} creditos`, "stat", "#ffe39d", 1);
+    this.textRole(x + 14, y + 10, `${getPlayerLabel(aiPlayerId)} Bot`, "label", toHexColor(playerClass.accent));
+    this.textRole(x + width - 14, y + 8, `${state.economies[aiPlayerId].credits} creditos`, "stat", "#ffe39d", 1);
     this.textRole(x + 14, y + 30, playerClass.shortName, "title", "#edf7ff");
 
     this.drawMetricIcon(x + 14, y + 58, "tower", "Torres", `${towers}`, playerClass.accent);
-    this.drawMetricIcon(x + 94, y + 58, "damage", "Dano", `${Math.round(state.combatStats.p2.waveDamageDealt)}`, playerColor("p2"));
+    this.drawMetricIcon(x + 94, y + 58, "damage", "Dano", `${Math.round(state.combatStats[aiPlayerId].waveDamageDealt)}`, playerColor(aiPlayerId));
     this.drawMetricIcon(x + 174, y + 58, "brain", "Decisoes", `${state.aiPartner.decisionsLogged}`, 0xffd36d);
 
     this.graphics.fillStyle(0x020712, 0.68);
@@ -444,6 +474,41 @@ export class PhaserHudRenderer {
       this.textRole(x + width - 20, y + 168, `${Math.round(decision.confidence * 100)}%`, "meta", "#edf7ff", 1);
       this.drawTags(x + 16, y + 188, decision.tags, playerClass.accent);
     }
+  }
+
+  private drawTeamPanel(state: GameState, focusedPlayerId?: PlayerId): void {
+    const playerIds = getPlayablePlayerIds(state);
+    const x = sidePanelSlots.right.x;
+    const y = 82;
+    const width = gameDesign.hud.sidePanelWidth;
+    const height = 500;
+    const readyCount = playerIds.filter((playerId) => state.wave.readyPlayers[playerId]).length;
+
+    this.panel(x, y, width, height, gameDesign.color.cyan, 0.78);
+    this.graphics.fillStyle(gameDesign.color.cyan, 0.08);
+    this.graphics.fillRoundedRect(x + 2, y + 2, width - 4, 44, 8);
+    this.textRole(x + 14, y + 10, "Time online", "label", "#83f3ff");
+    this.textRole(x + width - 14, y + 10, `${playerIds.length} ativos`, "label", "#edf7ff", 1);
+    this.textRole(x + 14, y + 30, `${readyCount}/${playerIds.length} prontos`, "meta", readyCount === playerIds.length ? "#b4ff72" : "#ffe39d");
+
+    playerIds.slice(0, 12).forEach((playerId, index) => {
+      const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
+      const rowY = y + 62 + index * 36;
+      const towers = state.towers.filter((tower) => tower.ownerId === playerId).length;
+      const isFocused = playerId === focusedPlayerId;
+      const isReady = state.wave.readyPlayers[playerId];
+      const seat = state.session.seats.find((candidate) => candidate.id === playerId);
+
+      this.graphics.fillStyle(isFocused ? playerClass.accent : 0x020712, isFocused ? 0.18 : 0.62);
+      this.graphics.fillRoundedRect(x + 12, rowY, width - 24, 30, 6);
+      this.graphics.lineStyle(isFocused ? 2 : 1, isReady ? gameDesign.color.success : playerClass.accent, isFocused || isReady ? 0.68 : 0.24);
+      this.graphics.strokeRoundedRect(x + 12, rowY, width - 24, 30, 6);
+      this.drawSmallIcon(seat?.kind === "ai-partner" ? "brain" : "tower", x + 26, rowY + 15, playerClass.accent);
+      this.textRole(x + 42, rowY + 5, `${getPlayerLabel(playerId)} ${playerClass.shortName}`, "label", "#edf7ff", 0, 112);
+      this.textRole(x + 158, rowY + 5, `${state.economies[playerId].credits}c`, "micro", "#ffe39d", 0, 42);
+      this.textRole(x + 202, rowY + 5, `${towers}T`, "micro", "#a9bac6", 0, 32);
+      this.textRole(x + width - 18, rowY + 5, isReady ? "OK" : "prep", "micro", isReady ? "#b4ff72" : "#8ea4b3", 1);
+    });
   }
 
   private drawDebugButton(state: GameState): void {
@@ -560,9 +625,9 @@ export class PhaserHudRenderer {
 
   private drawPauseOverlay(state: GameState): void {
     const x = GAME_WIDTH / 2 - 250;
-    const y = 156;
+    const y = 108;
     const width = 500;
-    const height = 336;
+    const height = 472;
 
     this.drawScrim(0.68);
     this.panel(x, y, width, height, gameDesign.color.cyan, 0.94);
@@ -570,17 +635,22 @@ export class PhaserHudRenderer {
     this.textRole(x + 62, y + 22, "Jogo pausado", "overlayTitle", "#edf7ff");
     this.textRole(x + 62, y + 62, "A simulacao esta congelada. Ajuste volume ou volte para a run.", "body", "#a9bac6", 0, width - 92);
 
-    this.drawOverlayButton(x + 32, y + 112, 208, 52, "ready", "Continuar", "Esc ou P tambem volta", gameDesign.color.success, () => {
+    this.drawOverlayButton(x + 32, y + 102, 208, 48, "ready", "Continuar", "Esc ou P tambem volta", gameDesign.color.success, () => {
       this.registry.resume();
     });
-    this.drawOverlayButton(x + 260, y + 112, 208, 52, "restart", "Reiniciar run", "volta para escolha de classe", gameDesign.color.gold, () => {
+    this.drawOverlayButton(x + 260, y + 102, 208, 48, "restart", "Reiniciar run", "volta para escolha de classe", gameDesign.color.gold, () => {
       this.registry.restartRun();
     });
+
+    this.drawVolumeControl(x + 32, y + 176, 436, "Volume master", state.settings.masterVolume, "masterVolume", gameDesign.color.cyan);
+    this.drawVolumeControl(x + 32, y + 222, 436, "SFX", state.settings.sfxVolume, "sfxVolume", gameDesign.color.gold);
+    this.drawVolumeControl(x + 32, y + 268, 436, "Musica", state.settings.musicVolume, "musicVolume", gameDesign.color.pink);
+
     this.drawOverlayButton(
       x + 32,
-      y + 188,
+      y + 324,
       208,
-      52,
+      44,
       "sound",
       state.settings.muted ? "Som desligado" : "Som ligado",
       "clique para alternar",
@@ -589,16 +659,16 @@ export class PhaserHudRenderer {
     );
     this.drawOverlayButton(
       x + 260,
-      y + 188,
+      y + 324,
       208,
-      52,
+      44,
       "motion",
       state.settings.reducedMotion ? "Movimento reduzido" : "Animacao completa",
       "clique para alternar",
       gameDesign.color.pink,
       () => this.registry.updateSettings({ reducedMotion: !state.settings.reducedMotion })
     );
-    this.drawOverlayButton(x + 32, y + 264, 436, 44, "brain", "Exportar aprendizado humano", "gera dataset local para o laboratorio", gameDesign.color.gold, () => {
+    this.drawOverlayButton(x + 32, y + 396, 436, 44, "brain", "Exportar aprendizado humano", "gera dataset local para o laboratorio", gameDesign.color.gold, () => {
       this.downloadLearningDataset();
     });
   }
@@ -615,15 +685,23 @@ export class PhaserHudRenderer {
     const width = 880;
     const height = 528;
     const seconds = Math.ceil(rewardSelection.autoSelectInMs / 1000);
+    const playerIds = getPlayablePlayerIds(state);
+    const localPlayerIds = getLocalPlayerIds(state.session);
+    const visibleRewardPlayerIds = (localPlayerIds.length > 0 ? localPlayerIds : playerIds).slice(0, 2);
+    const columnWidth = visibleRewardPlayerIds.length > 1 ? 300 : 390;
+    const progressX = x + 32 + visibleRewardPlayerIds.length * (columnWidth + 22);
+    const progressWidth = Math.max(220, x + width - 32 - progressX);
 
     this.drawScrim(0.7);
     this.panel(x, y, width, height, gameDesign.color.gold, 0.95);
     this.drawSmallIcon("reward", x + 36, y + 38, gameDesign.color.gold);
     this.textRole(x + 62, y + 22, "Recompensa do boss", "overlayTitle", "#edf7ff");
-    this.textRole(x + 62, y + 62, `Cada jogador escolhe uma evolucao. Auto em ${seconds}s.`, "body", "#c4d4df");
+    this.textRole(x + 62, y + 62, `${playerIds.length} jogadores escolhem. Auto em ${seconds}s.`, "body", "#c4d4df");
 
-    this.drawRewardColumn(state, "p1", x + 32, y + 110, 390);
-    this.drawRewardColumn(state, "p2", x + 458, y + 110, 390);
+    visibleRewardPlayerIds.forEach((playerId, index) => {
+      this.drawRewardColumn(state, playerId, x + 32 + index * (columnWidth + 22), y + 110, columnWidth);
+    });
+    this.drawRewardProgress(state, progressX, y + 110, progressWidth, 380);
   }
 
   private drawRewardColumn(state: GameState, playerId: PlayerId, x: number, y: number, width: number): void {
@@ -687,8 +765,7 @@ export class PhaserHudRenderer {
     this.textRole(x + 32, y + 24, won ? "Run vencida" : "Base perdida", "overlayTitle", won ? "#b4ff72" : "#ff8db4");
     this.textRole(x + 34, y + 66, `${summary.wavesCleared} waves superadas · core ${summary.baseHpRemaining}/${state.activeMap.baseHp}`, "body", "#c4d4df");
 
-    this.drawSummaryPlayer(state, "p1", x + 34, y + 118, 286);
-    this.drawSummaryPlayer(state, "p2", x + 340, y + 118, 286);
+    this.drawSummaryGrid(state, x + 34, y + 112, width - 68, 254);
     this.drawOverlayButton(x + 34, y + height - 74, 280, 48, "restart", "Jogar novamente", "volta para escolha de classe", gameDesign.color.gold, () => {
       this.registry.restartRun();
     });
@@ -719,6 +796,38 @@ export class PhaserHudRenderer {
     this.drawTinyStat(x + 150, y + 108, "credits", "Construidas", `${stats.towersBuilt}`, gameDesign.color.success);
   }
 
+  private drawSummaryGrid(state: GameState, x: number, y: number, width: number, height: number): void {
+    const summary = state.runSummary;
+
+    if (!summary) {
+      return;
+    }
+
+    const playerIds = getPlayablePlayerIds(state).slice(0, 12);
+    const columns = playerIds.length <= 2 ? 2 : playerIds.length <= 6 ? 3 : 4;
+    const gap = 10;
+    const cardWidth = (width - gap * (columns - 1)) / columns;
+    const cardHeight = Math.min(78, (height - gap * 2) / 3);
+
+    playerIds.forEach((playerId, index) => {
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const cardX = x + col * (cardWidth + gap);
+      const cardY = y + row * (cardHeight + gap);
+      const playerClass = getPlayerClassDefinition(summary.playerClasses[playerId]);
+      const stats = summary.combatStats[playerId];
+      const towerTotal = Object.values(summary.towerCounts[playerId]).reduce((sum, count) => sum + count, 0);
+
+      this.graphics.fillStyle(0x020712, 0.66);
+      this.graphics.fillRoundedRect(cardX, cardY, cardWidth, cardHeight, 8);
+      this.graphics.lineStyle(1, playerClass.accent, 0.38);
+      this.graphics.strokeRoundedRect(cardX, cardY, cardWidth, cardHeight, 8);
+      this.textRole(cardX + 12, cardY + 10, `${getPlayerLabel(playerId)} ${playerClass.shortName}`, "label", toHexColor(playerClass.accent), 0, cardWidth - 24);
+      this.textRole(cardX + 12, cardY + 32, `${Math.round(stats.totalDamageDealt)} dano`, "micro", "#edf7ff", 0, cardWidth - 24);
+      this.textRole(cardX + 12, cardY + 48, `${stats.kills} elim. · ${towerTotal} torres`, "micro", "#a9bac6", 0, cardWidth - 24);
+    });
+  }
+
   private drawOverlayButton(
     x: number,
     y: number,
@@ -738,6 +847,91 @@ export class PhaserHudRenderer {
     this.textRole(x + 48, y + 10, title, "body", "#edf7ff", 0, width - 58);
     this.textRole(x + 48, y + 30, detail, "meta", "#8ea4b3", 0, width - 58);
     this.registerButton(x, y, width, height, onClick);
+  }
+
+  private drawVolumeControl(
+    x: number,
+    y: number,
+    width: number,
+    label: string,
+    value: number,
+    key: keyof Pick<GameSettings, "masterVolume" | "sfxVolume" | "musicVolume">,
+    color: number
+  ): void {
+    const buttonSize = 30;
+    const barX = x + 156;
+    const barY = y + 18;
+    const barWidth = width - 230;
+    const clamped = Phaser.Math.Clamp(value, 0, 1);
+
+    this.graphics.fillStyle(0x020712, 0.68);
+    this.graphics.fillRoundedRect(x, y, width, 36, 8);
+    this.graphics.lineStyle(1, color, 0.32);
+    this.graphics.strokeRoundedRect(x, y, width, 36, 8);
+    this.textRole(x + 14, y + 9, label, "body", "#edf7ff", 0, 132);
+    this.graphics.fillStyle(0x132231, 0.9);
+    this.graphics.fillRoundedRect(barX, barY, barWidth, 6, 3);
+    this.graphics.fillStyle(color, 0.92);
+    this.graphics.fillRoundedRect(barX, barY, barWidth * clamped, 6, 3);
+    this.textRole(x + width - 76, y + 10, `${Math.round(clamped * 100)}%`, "label", toHexColor(color), 1);
+
+    this.drawVolumeButton(x + width - 66, y + 3, buttonSize, "-", color, () => {
+      this.registry.updateSettings({ [key]: Phaser.Math.Clamp(clamped - 0.1, 0, 1) });
+    });
+    this.drawVolumeButton(x + width - 32, y + 3, buttonSize, "+", color, () => {
+      this.registry.updateSettings({ [key]: Phaser.Math.Clamp(clamped + 0.1, 0, 1) });
+    });
+  }
+
+  private drawRewardProgress(state: GameState, x: number, y: number, width: number, height: number): void {
+    const rewardSelection = state.rewardSelection;
+
+    if (!rewardSelection) {
+      return;
+    }
+
+    this.graphics.fillStyle(0x020712, 0.62);
+    this.graphics.fillRoundedRect(x, y, width, height, 8);
+    this.graphics.lineStyle(1, gameDesign.color.gold, 0.32);
+    this.graphics.strokeRoundedRect(x, y, width, height, 8);
+    this.textRole(x + 14, y + 12, "Progresso do time", "title", "#edf7ff", 0, width - 28);
+
+    getPlayablePlayerIds(state).slice(0, 12).forEach((playerId, index) => {
+      const choices = rewardSelection.choices[playerId];
+      const playerClass = getPlayerClassDefinition(state.playerClasses[playerId]);
+      const rowY = y + 46 + index * 27;
+      const selected = Boolean(choices?.selectedSkillId);
+      const seat = state.session.seats.find((candidate) => candidate.id === playerId);
+
+      this.graphics.fillStyle(selected ? playerClass.accent : 0x07131e, selected ? 0.16 : 0.62);
+      this.graphics.fillRoundedRect(x + 12, rowY, width - 24, 21, 5);
+      this.textRole(
+        x + 22,
+        rowY + 5,
+        `${getPlayerLabel(playerId)} ${seat?.kind === "ai-partner" ? "Bot" : playerClass.shortName}`,
+        "micro",
+        "#edf7ff",
+        0,
+        width - 86
+      );
+      this.textRole(x + width - 18, rowY + 5, selected ? "OK" : "auto", "micro", selected ? "#b4ff72" : "#ffe39d", 1);
+    });
+  }
+
+  private drawVolumeButton(
+    x: number,
+    y: number,
+    size: number,
+    label: string,
+    color: number,
+    onClick: () => void
+  ): void {
+    this.graphics.fillStyle(0x020712, 0.86);
+    this.graphics.fillRoundedRect(x, y, size, size, 6);
+    this.graphics.lineStyle(1, color, 0.5);
+    this.graphics.strokeRoundedRect(x, y, size, size, 6);
+    this.textRole(x + size / 2, y + 6, label, "title", "#edf7ff", 0.5);
+    this.registerButton(x, y, size, size, onClick);
   }
 
   private getRewardEffectSummary(effect: { rangeBonus?: number; damageMultiplier?: number; costMultiplier?: number; rewardMultiplier?: number }): string {
@@ -1123,14 +1317,17 @@ export class PhaserHudRenderer {
       return "Combate";
     }
 
-    if (state.wave.readyPlayers.p1 && (state.sessionMode === "solo-ai" || state.wave.readyPlayers.p2)) {
+    const playerIds = getPlayablePlayerIds(state);
+    const readyPlayerIds = playerIds.filter((playerId) => state.wave.readyPlayers[playerId]);
+
+    if (playerIds.length > 0 && readyPlayerIds.length === playerIds.length) {
       return `Entrando em ${(state.wave.nextWaveInMs / 1000).toFixed(1)}s`;
     }
 
-    const missing = [
-      state.wave.readyPlayers.p1 ? null : "P1",
-      state.sessionMode === "solo-ai" || state.wave.readyPlayers.p2 ? null : "P2"
-    ].filter(Boolean);
+    const missing = playerIds
+      .filter((playerId) => !state.wave.readyPlayers[playerId])
+      .slice(0, 4)
+      .map(getPlayerLabel);
 
     return missing.length > 0
       ? `Auto em ${(state.wave.nextWaveInMs / 1000).toFixed(0)}s · falta ${missing.join("+")}`

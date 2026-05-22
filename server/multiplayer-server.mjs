@@ -7,11 +7,12 @@ const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const DEFAULT_CLASS_ID = "christian-vitrail-custodian";
 const AI_CLASS_IDS = [
   "christian-vitrail-custodian",
+  "umbanda-gira-medium",
   "islamic-zellige-geometer",
-  "hindu-kolam-dancer",
-  "buddhist-mandala-monk",
-  "jewish-menorah-keeper",
-  "shinto-torii-guardian"
+  "hindu-dharma-weaver",
+  "buddhist-middle-path",
+  "shinto-torii-keeper",
+  "candomble-axe-guardian"
 ];
 
 /** @typedef {{ id: string, socket: import("ws").WebSocket, roomCode: string | null }} Client */
@@ -102,8 +103,18 @@ const handleClientMessage = (client, message) => {
     return;
   }
 
+  if (message.type === "fill-bots") {
+    fillBots(client);
+    return;
+  }
+
   if (message.type === "remove-bot") {
     removeBot(client, message.seatId);
+    return;
+  }
+
+  if (message.type === "clear-bots") {
+    clearBots(client);
     return;
   }
 
@@ -246,7 +257,7 @@ const updateSeat = (client, updater) => {
 
 const startRoom = (client, automatic = false) => {
   const room = requireRoom(client);
-  const connectedSeats = room.seats.filter((seat) => seat.connected && seat.kind === "human-online");
+  const humanSeats = getHumanSeats(room);
 
   if (room.started) {
     return;
@@ -256,33 +267,27 @@ const startRoom = (client, automatic = false) => {
     throw new Error("Apenas o host inicia a sala");
   }
 
-  if (connectedSeats.length < MIN_PLAYERS && !room.aiFill) {
+  if (getActiveSeats(room).length < MIN_PLAYERS && room.aiFill) {
+    addBotToNextEmptySeat(room, "IA Aliada", "islamic-zellige-geometer");
+  }
+
+  const activeSeats = getActiveSeats(room);
+
+  if (activeSeats.length < MIN_PLAYERS) {
     throw new Error("Precisa de 2 jogadores ou IA de preenchimento");
   }
 
-  for (const seat of connectedSeats) {
+  for (const seat of activeSeats) {
     seat.classId = seat.classId ?? DEFAULT_CLASS_ID;
     seat.ready = true;
-  }
-
-  if (connectedSeats.length < MIN_PLAYERS && room.aiFill) {
-    const aiSeat = room.seats.find((seat) => seat.kind === "empty" || !seat.connected);
-
-    if (aiSeat) {
-      aiSeat.kind = "ai-partner";
-      aiSeat.displayName = "IA Aliada";
-      aiSeat.classId = "islamic-zellige-geometer";
-      aiSeat.connected = true;
-      aiSeat.ready = true;
-      aiSeat.clientId = null;
-      aiSeat.isHost = false;
-    }
   }
 
   room.started = true;
   touchRoom(room);
   broadcast(room, { type: "room-started", room: serializeRoom(room) });
-  console.log(`[multiplayer] room ${room.code} started with ${connectedSeats.length} human player(s)`);
+  console.log(
+    `[multiplayer] room ${room.code} started with ${humanSeats.length} human player(s) and ${getBotSeats(room).length} bot(s)`
+  );
 };
 
 const addBot = (client, seatId) => {
@@ -304,13 +309,35 @@ const addBot = (client, seatId) => {
     throw new Error('Nenhum assento vazio disponivel');
   }
 
-  seat.kind = 'ai-partner';
-  seat.displayName = 'Bot IA';
-  seat.classId = AI_CLASS_IDS[Math.floor(Math.random() * AI_CLASS_IDS.length)];
-  seat.connected = true;
-  seat.ready = true;
-  seat.clientId = null;
-  seat.isHost = false;
+  fillBotSeat(seat);
+
+  touchRoom(room);
+  broadcastRoom(room);
+};
+
+const fillBots = (client) => {
+  const room = requireRoom(client);
+
+  if (room.hostClientId !== client.id) {
+    throw new Error('Apenas o host pode adicionar bots');
+  }
+
+  if (room.started) {
+    throw new Error('Sala ja iniciou');
+  }
+
+  let added = 0;
+
+  for (const seat of room.seats) {
+    if (seat.kind === 'empty' || !seat.connected) {
+      fillBotSeat(seat);
+      added += 1;
+    }
+  }
+
+  if (added === 0) {
+    throw new Error('Nenhum assento vazio disponivel');
+  }
 
   touchRoom(room);
   broadcastRoom(room);
@@ -349,11 +376,37 @@ const removeBot = (client, seatId) => {
   broadcastRoom(room);
 };
 
+const clearBots = (client) => {
+  const room = requireRoom(client);
+
+  if (room.hostClientId !== client.id) {
+    throw new Error('Apenas o host pode remover bots');
+  }
+
+  if (room.started) {
+    throw new Error('Sala ja iniciou');
+  }
+
+  for (const seat of getBotSeats(room)) {
+    clearSeat(seat);
+  }
+
+  touchRoom(room);
+  broadcastRoom(room);
+};
+
 const relayGameAction = (client, action) => {
   const room = requireRoom(client);
   const seat = requireClientSeat(client, room);
 
-  if (!room.started || !action || action.playerId !== seat.id) {
+  if (!room.started || !action) {
+    return;
+  }
+
+  const isTargetAi = room.seats.find(s => s.id === action.playerId)?.kind === "ai-partner";
+  const authorized = action.playerId === seat.id || (seat.isHost && isTargetAi);
+
+  if (!authorized) {
     return;
   }
 
@@ -361,12 +414,13 @@ const relayGameAction = (client, action) => {
 };
 
 const canAutoStart = (room) => {
-  const connectedSeats = room.seats.filter((seat) => seat.connected && seat.kind === "human-online");
+  const humanSeats = getHumanSeats(room);
 
   return (
     !room.started &&
-    connectedSeats.length >= MIN_PLAYERS &&
-    connectedSeats.every((seat) => seat.ready && seat.classId)
+    getActiveSeats(room).length >= MIN_PLAYERS &&
+    humanSeats.length >= MIN_PLAYERS &&
+    humanSeats.every((seat) => seat.ready && seat.classId)
   );
 };
 
@@ -423,7 +477,9 @@ const sendError = (client, message) => {
 };
 
 const serializeRoom = (room) => {
-  const connectedSeats = room.seats.filter((seat) => seat.connected && seat.kind !== "empty");
+  const activeSeats = getActiveSeats(room);
+  const humanSeats = getHumanSeats(room);
+  const botSeats = getBotSeats(room);
 
   return {
     code: room.code,
@@ -435,8 +491,11 @@ const serializeRoom = (room) => {
     aiFill: room.aiFill,
     started: room.started,
     seats: room.seats,
-    connectedCount: connectedSeats.filter((seat) => seat.kind === "human-online").length,
-    readyCount: connectedSeats.filter((seat) => seat.ready).length,
+    connectedCount: activeSeats.length,
+    humanCount: humanSeats.length,
+    botCount: botSeats.length,
+    activeCount: activeSeats.length,
+    readyCount: activeSeats.filter((seat) => seat.ready).length,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt
   };
@@ -444,6 +503,47 @@ const serializeRoom = (room) => {
 
 const touchRoom = (room) => {
   room.updatedAt = Date.now();
+};
+
+const getActiveSeats = (room) =>
+  room.seats.filter((seat) => seat.connected && seat.kind !== "empty");
+
+const getHumanSeats = (room) =>
+  room.seats.filter((seat) => seat.connected && seat.kind === "human-online");
+
+const getBotSeats = (room) =>
+  room.seats.filter((seat) => seat.connected && seat.kind === "ai-partner");
+
+const addBotToNextEmptySeat = (room, displayName = "Bot IA", classId = null) => {
+  const seat = room.seats.find((candidate) => candidate.kind === 'empty' || !candidate.connected);
+
+  if (!seat) {
+    return false;
+  }
+
+  fillBotSeat(seat, displayName, classId);
+
+  return true;
+};
+
+const fillBotSeat = (seat, displayName = 'Bot IA', classId = null) => {
+  seat.kind = 'ai-partner';
+  seat.displayName = displayName;
+  seat.classId = classId ?? AI_CLASS_IDS[Math.floor(Math.random() * AI_CLASS_IDS.length)];
+  seat.connected = true;
+  seat.ready = true;
+  seat.clientId = null;
+  seat.isHost = false;
+};
+
+const clearSeat = (seat) => {
+  seat.kind = 'empty';
+  seat.displayName = seat.id.toUpperCase();
+  seat.classId = null;
+  seat.connected = false;
+  seat.ready = false;
+  seat.clientId = null;
+  seat.isHost = false;
 };
 
 const createEmptySeats = () =>

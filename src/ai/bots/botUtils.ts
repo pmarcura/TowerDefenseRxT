@@ -135,6 +135,10 @@ export const getCurrentWave = (state: HeadlessGameState) =>
   getWaveDefinition(state.currentWaveIndex);
 
 export const getCurrentMap = (state: HeadlessGameState) => {
+  if (state.activeMap) {
+    return state.activeMap;
+  }
+
   const wave = getCurrentWave(state);
 
   return getMapStage(wave.mapStageIndex);

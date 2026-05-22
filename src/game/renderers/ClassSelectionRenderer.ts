@@ -40,7 +40,7 @@ export class ClassSelectionRenderer {
     private readonly scene: Phaser.Scene,
     private readonly classSelectionSystem: ClassSelectionSystem
   ) {
-    this.graphics = scene.add.graphics().setDepth(60);
+    this.graphics = scene.add.graphics().setDepth(60).setScrollFactor(0);
     this.scene.input.on("pointerdown", this.handlePointerDown, this);
   }
 
@@ -620,7 +620,7 @@ export class ClassSelectionRenderer {
     let text = this.texts[this.usedTexts];
 
     if (!text) {
-      text = this.scene.add.text(0, 0, "", {}).setDepth(61);
+      text = this.scene.add.text(0, 0, "", {}).setDepth(61).setScrollFactor(0);
       this.texts.push(text);
     }
 

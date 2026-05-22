@@ -3,6 +3,7 @@ import type { PlayerId } from "../models/types";
 import type { MultiplayerSessionConfig, PlayerSeat } from "./sessionTypes";
 
 export const DEFAULT_MULTIPLAYER_URL = "ws://127.0.0.1:8787";
+export const DEFAULT_MULTIPLAYER_PORT = 8787;
 
 export type OnlineConnectionStatus = "idle" | "connecting" | "connected" | "disconnected" | "error";
 
@@ -22,6 +23,9 @@ export type OnlineRoomState = {
   started: boolean;
   seats: OnlineRoomSeat[];
   connectedCount: number;
+  humanCount: number;
+  botCount: number;
+  activeCount: number;
   readyCount: number;
   createdAt: number;
   updatedAt: number;
@@ -66,8 +70,14 @@ export type OnlineClientMessage =
       seatId?: string;
     }
   | {
+      type: "fill-bots";
+    }
+  | {
       type: "remove-bot";
       seatId: string;
+    }
+  | {
+      type: "clear-bots";
     }
   | {
       type: "game-action";
